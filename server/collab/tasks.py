@@ -19,7 +19,7 @@ def match(task_id):
     task_values = task.values_list('id', 'source_file_version__file_id',
                                    'source_start', 'source_end',
                                    'source_file_version_id',
-                                   'target_project_id', 'target_file_id')[0]
+                                   'target_project_id', 'target_file_id').get()
     print(task_values)
     (task_id, source_file, source_start, source_end, source_file_version,
      target_project, target_file) = task_values

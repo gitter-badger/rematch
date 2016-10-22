@@ -109,4 +109,5 @@ class VectorSerializer(serializers.ModelSerializer):
 class MatchSerializer(serializers.ModelSerializer):
   class Meta:
     model = Match
-    fields = ('task', 'type', 'score')
+    fields = ('from_vector', 'to_vector', 'from_instance', 'to_instance',
+              'task', 'type', 'score')

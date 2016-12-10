@@ -2,6 +2,7 @@ from ..idasix import QtCore, QtWidgets
 import idautils
 
 from ..dialogs.match import MatchDialog
+from ..dialogs.matchresult import MatchResultDialog
 
 from .. import instances
 from .. import network, netnode, logger
@@ -191,4 +192,9 @@ class MatchAction(base.BoundFileAction):
     self.cancel_task()
 
   def accept_task(self):
-    self.cancel_task()
+    self.timer.stop()
+    self.timer = None
+    self.pbar = None
+
+    self.results = MatchResultDialog(self.task_id)
+    self.show()

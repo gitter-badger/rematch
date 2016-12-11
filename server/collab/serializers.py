@@ -56,7 +56,46 @@ class TaskEditSerializer(TaskSerializer):
   source_end = serializers.ReadOnlyField()
 
 
+class TaskInstanceSerializer(serializers.ModelSerializer):
+  class NestedMatchSerializer(serializers.ModelSerializer):
+    class Meta:
+      model = Match
+      fields = ('to_instance', 'type', 'score')
+
+  matches = serializers.SerializerMethodField()
+
+  class Meta:
+    model = Instance
+    fields = ('id', 'type', 'offset', 'matches')
+
+  def __init__(self, task_id, *args, **kwargs):
+    super(TaskInstanceSerializer, self).__init__(*args, **kwargs)
+    self.task_id = task_id
+
+  def get_matches(self, instance):
+    matches = Match.objects.filter(from_instance=instance,
+                                   task_id=self.task_id)
+    serializer = self.NestedMatchSerializer(matches, many=True)
+    return serializer.data
+
+
+class SimpleInstanceSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Instance
+    fields = ('id', 'file_version', 'type', 'offset')
+
+
 class InstanceSerializer(serializers.ModelSerializer):
+  owner = serializers.ReadOnlyField(source='owner.username')
+  file = serializers.ReadOnlyField(source='file_version.file_id')
+
+  class Meta:
+    model = Instance
+    fields = ('id', 'owner', 'file', 'file_version', 'type', 'offset',
+              'vectors', 'annotations')
+
+
+class InstanceVectorSerializer(InstanceSerializer):
   class NestedVectorSerializer(serializers.ModelSerializer):
     class Meta:
       model = Vector
@@ -67,15 +106,8 @@ class InstanceSerializer(serializers.ModelSerializer):
       model = Annotation
       fields = ('id', 'type', 'data')
 
-  owner = serializers.ReadOnlyField(source='owner.username')
-  file = serializers.ReadOnlyField(source='file_version.file_id')
   vectors = NestedVectorSerializer(many=True, required=True)
   annotations = NestedAnnotationSerializer(many=True, required=True)
-
-  class Meta:
-    model = Instance
-    fields = ('id', 'owner', 'file', 'file_version', 'type', 'offset',
-              'vectors', 'annotations')
 
   def create(self, validated_data):
     vectors_data = validated_data.pop('vectors')

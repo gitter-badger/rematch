@@ -4,8 +4,9 @@ from collab.models import (Project, File, FileVersion, Task, Instance, Vector,
                            Match)
 from collab.serializers import (ProjectSerializer, FileSerializer,
                                 FileVersionSerializer, TaskSerializer,
-                                TaskEditSerializer, InstanceSerializer,
-                                VectorSerializer, MatchSerializer)
+                                TaskEditSerializer, TaskInstanceSerializer,
+                                InstanceVectorSerializer, VectorSerializer,
+                                MatchSerializer, SimpleInstanceSerializer)
 from collab.permissions import IsOwnerOrReadOnly
 from collab import tasks
 
@@ -89,6 +90,30 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
       serializer_class = TaskEditSerializer
     return serializer_class
 
+  @decorators.detail_route(url_path="matches")
+  def matches(self, request, pk):
+    del request
+
+    task = self.get_object()
+
+    # include local matches (created for specified file_version and are a
+    # 'from_instance' match). for those, include the match objects themselves
+    instances = Instance.objects.filter(file_version=task.source_file_version)
+    instances = instances.exclude(from_matches=None)
+    serializer = TaskInstanceSerializer(task.id, instances, many=True)
+    # TODO: this shouldn't be needed here
+    serializer.is_valid()
+    local_instances_data = serializer.data
+
+    # include remote matches (are a 'to_instance' match), those are referenced
+    # by match records of local instances
+    instances = Instance.objects.filter(to_matches__task=task)
+    serializer = SimpleInstanceSerializer(instances, many=True)
+    remote_instances_data = serializer.data
+
+    data = {'local': local_instances_data, 'remote': remote_instances_data}
+    return response.Response(data)
+
 
 class MatchViewSet(viewsets.ReadOnlyModelViewSet):
   queryset = Match.objects.all()
@@ -99,7 +124,7 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
 class InstanceViewSet(ViewSetManyAllowedMixin, ViewSetOwnerMixin,
                       viewsets.ModelViewSet):
   queryset = Instance.objects.all()
-  serializer_class = InstanceSerializer
+  serializer_class = InstanceVectorSerializer
   filter_fields = ('owner', 'file_version', 'type')
 
 

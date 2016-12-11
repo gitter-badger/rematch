@@ -4,6 +4,7 @@ from .mnemonic_hist import MnemonicHistogramMatch
 
 
 match_list = [AssemblyHashMatch, MnemonicHashMatch, MnemonicHistogramMatch]
+match_list = [AssemblyHashMatch, MnemonicHashMatch]
 
 __all__ = ['AssemblyHashMatch', 'MnemonicHashMatch', 'MnemonicHistogramMatch',
            'match_list']

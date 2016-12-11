@@ -22,4 +22,5 @@ class HashMatch(match.Match):
 
       score = 1.0 / len(matches) * 100
       for target_id, target_instance_id in matches:
-        yield source_id, source_instance_id, target_id, target_instance_id, score
+        yield (source_id, source_instance_id, target_id, target_instance_id,
+               score)

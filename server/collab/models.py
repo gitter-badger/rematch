@@ -134,11 +134,11 @@ class Task(models.Model):
 
 
 class Match(models.Model):
-  from_vector = models.ForeignKey(Vector, related_name='from_vector')
-  to_vector = models.ForeignKey(Vector, related_name='to_vector')
+  from_vector = models.ForeignKey(Vector, related_name='from_matches')
+  to_vector = models.ForeignKey(Vector, related_name='to_matches')
 
-  from_instance = models.ForeignKey(Instance, related_name='from_instance')
-  to_instance = models.ForeignKey(Instance, related_name='to_instance')
+  from_instance = models.ForeignKey(Instance, related_name='from_matches')
+  to_instance = models.ForeignKey(Instance, related_name='to_matches')
 
   task = models.ForeignKey(Task, db_index=True, related_name='matches')
 

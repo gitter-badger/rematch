@@ -20,6 +20,7 @@ class MatchAction(base.BoundFileAction):
     self.functions = None
     self.pbar = None
     self.timer = None
+    self.results = None
     self.task_id = None
     self.file_version_id = None
     self.instance_set = []

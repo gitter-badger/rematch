@@ -11,10 +11,14 @@ from . import resultscript
 
 
 def name_obj(obj):
-  return obj["name"] if obj["name"] else "sub_{0:X}".format(obj['ea'])
+  return obj["name"] if 'name' in obj else "sub_{0:X}".format(obj['offset'])
 
 
 class MatchTreeWidgetItem(QtWidgets.QTreeWidgetItem):
+  def __init__(self, api_id, *args, **kwargs):
+    super(MatchTreeWidgetItem, self).__init__(*args, **kwargs)
+    self.api_id = api_id
+
   def __lt__(self, other):
     column = self.treeWidget().sortColumn()
     if self.childCount() == 0 and other.childCount() == 0:
@@ -35,10 +39,6 @@ class MatchTreeWidgetItem(QtWidgets.QTreeWidgetItem):
     return max(self.child(i) for i in range(self.childCount()))
 
 
-# TODO: replace with connections
-# this is supposed to catch typing in the tree widget
-# and redirect those to the search text box
-# TODO: create a search tree qwidget that has the search text box built into it
 class SearchTreeWidget(QtWidgets.QTreeWidget):
   def __init__(self, search_box, match_column, *args, **kwargs):
     super(SearchTreeWidget, self).__init__(*args, **kwargs)
@@ -50,7 +50,10 @@ class SearchTreeWidget(QtWidgets.QTreeWidget):
     super(SearchTreeWidget, self).keyPressEvent(self, event)
     if event.text():
       self.search_box.keyPressEvent(event)
+    elif event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
+      self.search(self.search_box.text())
 
+  # TODO: search starting at currently selected item, allow searching next item
   def search(self, text):
     if not text:
       return
@@ -87,30 +90,30 @@ class MatchResultDialog(base.BaseDialog):
   LOCAL_ELEMENT_TOOLTIP = "Local function"
   REMOTE_ELEMENT_TOOLTIP = "Remote function"
 
-  def __init__(self, task_id, **kwargs):
-    super(MatchResultDialog, self).__init__(**kwargs)
+  def __init__(self, task_id, *args, **kwargs):
+    super(MatchResultDialog, self).__init__(*args, **kwargs)
 
     self.task_id = task_id
 
-    self.matches = network.query("GET", "collab/matches",
-                                 params={'task': self.task_id}, json=True)
+    matches_url = "collab/tasks/{}/matches/".format(self.task_id)
+    response = network.query("GET", matches_url, json=True)
+    self.locals = {obj['id']: obj for obj in response['local']}
+    self.remotes = response['remote']
 
-    local_instance_ids = [match['from_instance'] for match in self.matches]
-    response = network.query("GET", "collab/instances/",
-                             params={"id": local_instance_ids}, json=True)
-    self.local_instances = {data['id']: data for data in response}
+    # local_instance_ids = [match['from_instance'] for match in self.matches]
+    # response = network.query("GET", "collab/instances/",
+    #                          params={"id": local_instance_ids}, json=True)
+    # self.local_instances = {data['id']: data for data in response}
 
-    remote_instance_ids = [match['from_instance'] for match in self.matches]
-    response = network.query("GET", "collab/instances/",
-                             params={"id": remote_instance_ids}, json=True)
-    self.remote_instances = {data['id']: data for data in response}
+    # remote_instance_ids = [match['from_instance'] for match in self.matches]
+    # response = network.query("GET", "collab/instances/",
+    #                          params={"id": remote_instance_ids}, json=True)
+    # self.remote_instances = {data['id']: data for data in response}
 
     # instance_ids = local_instance_ids + remote_instance_ids
     # response = network.query("GET", "collab/annotations/",
     #                          params={"instance": instance_ids}, json=True)
     # self.annotations = {data['instance']: data for data in response}
-
-    self.updating_selects = False
 
     self.script_code = ("# Filter out any function with "
                         "a name that starts with 'sub_'\n"
@@ -209,6 +212,12 @@ class MatchResultDialog(base.BaseDialog):
     self.btn_filter.clicked.connect(self.slotFilter)
     self.btn_apply.clicked.connect(self.slotApplyMatches)
 
+  def get_obj(self, obj_id):
+    if obj_id in self.locals:
+      return self.locals[obj_id]
+    else:
+      return self.remotes[obj_id]
+
   def itemSelectionChanged(self):
     if not self.tree.selectedItems():
       return
@@ -218,8 +227,8 @@ class MatchResultDialog(base.BaseDialog):
     if parent is None:
       return
 
-    id1 = item.parent().id
-    id2 = item.id
+    id1 = item.parent().api_id
+    id2 = item.api_id
 
     try:
       response = network.query("GET", "display/compare/",
@@ -233,7 +242,7 @@ class MatchResultDialog(base.BaseDialog):
     del column
 
     if item.parent() is None:
-      idaapi.jumpto(item.ea)
+      idaapi.jumpto(self.get_obj(item.api_id)['offset'])
       item.setExpanded(not item.isExpanded())
 
   def itemChanged(self, item, column):
@@ -245,22 +254,13 @@ class MatchResultDialog(base.BaseDialog):
     if parent is None:
       return
 
-    if parent.childCount() <= 1:
-      return
-
-    if self.updating_selects:
-      return
-
-    self.updating_selects = True
-
+    self.blockSignals(True)
     item_index = parent.indexOfChild(item)
     for i in range(parent.childCount()):
       if i != item_index:
         curr_child = parent.child(i)
-        curr_child.setCheckState(self.CHECKBOX_COLUMN,
-                                 QtCore.Qt.CheckState.Unchecked)
-
-    self.updating_selects = False
+        curr_child.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
+    self.blockSignals(False)
 
   def slotFilter(self):
     self.script_dialog = resultscript.ResultScriptDialog(self.script_code)
@@ -285,8 +285,9 @@ class MatchResultDialog(base.BaseDialog):
         remote_item = local_item.child(remote_index)
         if remote_item.checkState(self.CHECKBOX_COLUMN):
           # TODO: apply metches
-          # remote_obj = self.documentation[remote_item.id]["documentation"]
-          # apply_documentation(local_item.ea, remote_obj)
+          # remote_obj = self.documentation[remote_item.api_id]
+          # remote_docs = remote_obj["documentation"]
+          # apply_documentation(local_item.ea, remote_docs)
           break
       apply_pbar.setValue(apply_pbar.value() + 1)
 
@@ -299,8 +300,7 @@ class MatchResultDialog(base.BaseDialog):
       local_item = root.child(local_index)
       for remote_index in range(local_item.childCount()):
         remote_item = local_item.child(remote_index)
-        remote_item.setCheckState(self.CHECKBOX_COLUMN,
-                                  QtCore.Qt.CheckState.Unchecked)
+        remote_item.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
 
   def slotSetChecks(self):
     root = self.tree.invisibleRootItem()
@@ -315,8 +315,7 @@ class MatchResultDialog(base.BaseDialog):
 
       if not checked and local_item.childCount():
         remote_item = local_item.child(local_item.childCount() - 1)
-        remote_item.setCheckState(self.CHECKBOX_COLUMN,
-                                  QtCore.Qt.CheckState.Checked)
+        remote_item.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Checked)
 
   def shouldFilter(self, context):
     if self.script_compile:
@@ -332,62 +331,60 @@ class MatchResultDialog(base.BaseDialog):
                         QtCore.Qt.DescendingOrder)
     self.tree.setSortingEnabled(False)
 
-    for local_id, remotes in self.matches:
-      local_obj = self.documentation[local_id]
-      local_ea = self.rev_elements[local_id]
+    for local_id, local_obj in self.locals.items():
+      local_ea = local_obj['offset']
       local_name = name_obj(local_obj)
 
       context = {'Filter': False, 'remote': None}
       context['local'] = {'ea': local_ea, 'name': local_name,
-                          'docscore': local_obj["documentation_score"],
-                          'documentation': local_obj['documentation'],
-                          'score': local_obj["match_score"],
-                          'key': local_obj["match_key"], 'local': True}
+                          # 'docscore': local_obj["documentation_score"],
+                          # 'documentation': local_obj['documentation'],
+                          'local': True}
       if self.shouldFilter(context):
         continue
 
-      local_root = MatchTreeWidgetItem(self.tree)
+      local_root = MatchTreeWidgetItem(local_id, self.tree)
       local_root.setFlags(QtCore.Qt.ItemIsEnabled)
       local_root.setText(self.MATCH_NAME_COLUMN, local_name)
       local_root.setForeground(self.MATCH_NAME_COLUMN,
                                self.LOCAL_ELEMENT_COLOR)
       local_root.setToolTip(self.MATCH_NAME_COLUMN, self.LOCAL_ELEMENT_TOOLTIP)
-      local_root.setText(self.MATCH_KEY_COLUMN,
-                         str(self.documentation[local_id]["match_key"]))
-      local_root.id = local_id
-      local_root.ea = local_ea
+      # local_root.setText(self.MATCH_KEY_COLUMN,
+      #                    str(self.documentation[local_id]["match_key"]))
 
       self.tree.expandItem(local_root)
 
       remote_root = None
-      for remote_id in remotes:
-        remote_obj = self.documentation[remote_id]
+      for match_obj in local_obj['matches']:
+        remote_id = match_obj['to_instance']
+        remote_obj = self.remotes[remote_id]
         remote_ea = remote_obj['offset']
         remote_name = name_obj(remote_obj)
 
         context = {'Filter': False}
         context['local'] = {'ea': local_ea, 'name': local_name,
-                            'docscore': local_obj["documentation_score"],
-                            'documentation': local_obj['documentation'],
-                            'score': local_obj["match_score"],
-                            'key': local_obj["match_key"], 'local': True}
+                            # 'docscore': local_obj["documentation_score"],
+                            # 'documentation': local_obj['documentation'],
+                            'local': True}
         context['remote'] = {'ea': remote_ea, 'name': remote_name,
-                             'docscore': remote_obj["documentation_score"],
-                             'documentation': remote_obj['documentation'],
-                             'score': remote_obj["match_score"],
-                             'key': local_obj["match_key"],
-                             'local': remote_id in self.rev_elements.keys()}
+                             # 'docscore': remote_obj["documentation_score"],
+                             # 'documentation': remote_obj['documentation'],
+                             'score': match_obj["score"],
+                             'key': match_obj["type"],
+                             # TODO: a remote match can also be local
+                             'local': False}
         if self.shouldFilter(context):
           continue
 
-        remote_root = MatchTreeWidgetItem(local_root)
-        remote_root.id = remote_id
+        remote_root = MatchTreeWidgetItem(remote_id, local_root)
         remote_root.setFlags(QtCore.Qt.ItemIsUserCheckable |
                              QtCore.Qt.ItemIsEnabled |
                              QtCore.Qt.ItemIsSelectable)
 
         remote_root.setText(self.MATCH_NAME_COLUMN, "{0}".format(remote_name))
-        if remote_id in self.rev_elements.keys():
+
+        if False:
+          # if remote_id in self.rev_elements.keys():
           remote_root.setForeground(self.MATCH_NAME_COLUMN,
                                     self.LOCAL_ELEMENT_COLOR)
           remote_root.setToolTip(self.MATCH_NAME_COLUMN,
@@ -396,17 +393,16 @@ class MatchResultDialog(base.BaseDialog):
           remote_root.setToolTip(self.MATCH_NAME_COLUMN,
                                  self.REMOTE_ELEMENT_TOOLTIP)
 
-        match_score = (remote_obj["match_score"] * local_obj["match_score"] *
-                       100)
-        doc_score = remote_obj["documentation_score"] * 100
+        match_score = match_obj['score']
+        # TODO: get a real score here
+        doc_score = 0
         remote_root.setText(self.MATCH_SCORE_COLUMN,
                             str(round(match_score, 2)))
         remote_root.setText(self.DOCUMENTATION_SCORE_COLUMN,
                             str(round(doc_score, 2)))
         remote_root.setText(self.MATCH_KEY_COLUMN,
-                            str(remote_obj["match_key"]))
-        remote_root.setCheckState(self.CHECKBOX_COLUMN,
-                                  QtCore.Qt.CheckState.Unchecked)
+                            str(match_obj['type']))
+        remote_root.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
 
       # autoselect the last (most recent) match possible...
       # TODO: when there's more info we should make better decisions for which
@@ -414,8 +410,7 @@ class MatchResultDialog(base.BaseDialog):
       if remote_root is not None:
         best_child = sorted([local_root.child(i)
                              for i in range(local_root.childCount())])[-1]
-        best_child.setCheckState(self.CHECKBOX_COLUMN,
-                                 QtCore.Qt.CheckState.Checked)
+        best_child.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Checked)
 
     self.tree.setSortingEnabled(True)
     self.tree.sortItems(self.DOCUMENTATION_SCORE_COLUMN,

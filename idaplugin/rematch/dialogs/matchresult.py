@@ -141,17 +141,15 @@ class MatchResultDialog(base.BaseDialog):
 
     # buttons layout
     self.hlayoutButtons = QtWidgets.QHBoxLayout()
-    # self.hlayoutButtons.setDirection(QtWidgets.QHBoxLayout.LeftToRight)
     self.hlayoutButtons.addWidget(self.btn_set)
     self.hlayoutButtons.addWidget(self.btn_clear)
     self.hlayoutButtons.addWidget(self.btn_filter)
     self.hlayoutButtons.addWidget(self.btn_apply)
 
-    self.hlayoutButtons.setAlignment(self.btn_set, QtCore.Qt.AlignLeft)
-    self.hlayoutButtons.setAlignment(self.btn_clear, QtCore.Qt.AlignLeft)
-    self.hlayoutButtons.setAlignment(self.btn_filter, QtCore.Qt.AlignLeft)
-    self.hlayoutButtons.setAlignment(self.btn_apply, QtCore.Qt.AlignRight)
-    self.hlayoutButtons.totalSizeHint()
+    self.btn_set.clicked.connect(self.set_checks)
+    self.btn_clear.clicked.connect(self.clear_checks)
+    self.btn_filter.clicked.connect(self.filter)
+    self.btn_apply.clicked.connect(self.apply_matches)
 
     # matches tree
     self.search_box = QtWidgets.QLineEdit()
@@ -159,7 +157,12 @@ class MatchResultDialog(base.BaseDialog):
                                  match_column=self.MATCH_NAME_COLUMN)
 
     # tree columns
-    self.tree.setHeaderLabels(("Function", "Score", "Doc. Score", "Match Key"))
+    self.tree.setHeaderLabels(("Function", "Score", "Doc. Score", "Engine"))
+
+    self.tree.header().setDefaultSectionSize(20)
+    self.tree.resizeColumnToContents(self.MATCH_SCORE_COLUMN)
+    self.tree.resizeColumnToContents(self.DOCUMENTATION_SCORE_COLUMN)
+    self.tree.setColumnWidth(self.MATCH_NAME_COLUMN, 150)
 
     # other tree properties
     self.tree.setAutoFillBackground(False)
@@ -172,6 +175,9 @@ class MatchResultDialog(base.BaseDialog):
     self.tree.setUniformRowHeights(False)
     self.tree.setMinimumSize(QtCore.QSize(0, 16777215))
     self.tree.setStyleSheet("QWidget {color: #000000;}")
+
+    self.tree.setSortingEnabled(True)
+    self.tree.sortItems(self.MATCH_SCORE_COLUMN, QtCore.Qt.DescendingOrder)
 
     # text browser (code highlighting & display)
     self.textBrowser = QtWidgets.QTextBrowser()
@@ -196,21 +202,13 @@ class MatchResultDialog(base.BaseDialog):
     # main layout
     self.base_layout.addWidget(self.splitter)
 
-    self.populate_tree()
-    self.tree.header().setDefaultSectionSize(20)
-    self.tree.resizeColumnToContents(self.MATCH_SCORE_COLUMN)
-    self.tree.resizeColumnToContents(self.DOCUMENTATION_SCORE_COLUMN)
-    self.tree.setColumnWidth(self.MATCH_NAME_COLUMN, 150)
-
     # connect events to handle
     self.tree.itemChanged.connect(self.itemChanged)
     self.tree.itemSelectionChanged.connect(self.itemSelectionChanged)
     self.tree.itemDoubleClicked.connect(self.itemDoubleClicked)
 
-    self.btn_set.clicked.connect(self.slotSetChecks)
-    self.btn_clear.clicked.connect(self.slotClearChecks)
-    self.btn_filter.clicked.connect(self.slotFilter)
-    self.btn_apply.clicked.connect(self.slotApplyMatches)
+    self.populate_tree()
+    self.set_checks()
 
   def get_obj(self, obj_id):
     if obj_id in self.locals:
@@ -262,12 +260,12 @@ class MatchResultDialog(base.BaseDialog):
         curr_child.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
     self.blockSignals(False)
 
-  def slotFilter(self):
+  def filter(self):
     self.script_dialog = resultscript.ResultScriptDialog(self.script_code)
-    self.script_dialog.accepted.connect(self.slotFilterUpdate)
+    self.script_dialog.accepted.connect(self.update_filter)
     self.script_dialog.show()
 
-  def slotFilterUpdate(self):
+  def update_filter(self):
     self.script_code = self.script_dialog.getFilter()
     self.script_dialog = None
 
@@ -276,7 +274,7 @@ class MatchResultDialog(base.BaseDialog):
     self.tree.clear()
     self.populate_tree()
 
-  def slotApplyMatches(self):
+  def apply_matches(self):
     root = self.tree.invisibleRootItem()
     apply_pbar = QtWidgets.QProgressDialog("", "&Cancel", 0, root.childCount())
     for local_index in range(root.childCount()):
@@ -294,7 +292,7 @@ class MatchResultDialog(base.BaseDialog):
     # refresh ida's views
     # _idaapi.refresh_idaview_anyway()
 
-  def slotClearChecks(self):
+  def clear_checks(self):
     root = self.tree.invisibleRootItem()
     for local_index in range(root.childCount()):
       local_item = root.child(local_index)
@@ -302,7 +300,7 @@ class MatchResultDialog(base.BaseDialog):
         remote_item = local_item.child(remote_index)
         remote_item.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
 
-  def slotSetChecks(self):
+  def set_checks(self):
     root = self.tree.invisibleRootItem()
     for local_index in range(root.childCount()):
       local_item = root.child(local_index)
@@ -354,7 +352,6 @@ class MatchResultDialog(base.BaseDialog):
 
       self.tree.expandItem(local_root)
 
-      remote_root = None
       for match_obj in local_obj['matches']:
         remote_id = match_obj['to_instance']
         remote_obj = self.remotes[remote_id]
@@ -383,8 +380,7 @@ class MatchResultDialog(base.BaseDialog):
 
         remote_root.setText(self.MATCH_NAME_COLUMN, "{0}".format(remote_name))
 
-        if False:
-          # if remote_id in self.rev_elements.keys():
+        if remote_id in self.locals:
           remote_root.setForeground(self.MATCH_NAME_COLUMN,
                                     self.LOCAL_ELEMENT_COLOR)
           remote_root.setToolTip(self.MATCH_NAME_COLUMN,
@@ -404,23 +400,9 @@ class MatchResultDialog(base.BaseDialog):
                             str(match_obj['type']))
         remote_root.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
 
-      # autoselect the last (most recent) match possible...
-      # TODO: when there's more info we should make better decisions for which
-      # is the default match but right now it's the latest
-      if remote_root is not None:
-        best_child = sorted([local_root.child(i)
-                             for i in range(local_root.childCount())])[-1]
-        best_child.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Checked)
-
-    self.tree.setSortingEnabled(True)
-    self.tree.sortItems(self.DOCUMENTATION_SCORE_COLUMN,
-                        QtCore.Qt.DescendingOrder)
-    # fake click on
+    # fake click on first child item so browser won't show a blank page
     root = self.tree.invisibleRootItem()
-    if not root.childCount():
-      return
-
-    if root.child(0).childCount():
-      item = root.child(0).child(0)
-      item.setSelected(True)
-      self.itemSelectionChanged()
+    if root.childCount():
+      if root.child(0).childCount():
+        item = root.child(0).child(0)
+        item.setSelected(True)

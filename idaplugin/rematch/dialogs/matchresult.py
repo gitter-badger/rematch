@@ -86,7 +86,7 @@ class MatchResultDialog(base.BaseDialog):
   DOCUMENTATION_SCORE_COLUMN = 2
   MATCH_KEY_COLUMN = 3
 
-  LOCAL_ELEMENT_COLOR = QtGui.QBrush(QtGui.QColor(0x00, 0x00, 0xFF))
+  LOCAL_ELEMENT_COLOR = QtGui.QBrush(QtGui.QColor(0x42, 0x86, 0xF4))
   LOCAL_ELEMENT_TOOLTIP = "Local function"
   REMOTE_ELEMENT_TOOLTIP = "Remote function"
 
@@ -99,21 +99,6 @@ class MatchResultDialog(base.BaseDialog):
     response = network.query("GET", matches_url, json=True)
     self.locals = {obj['id']: obj for obj in response['local']}
     self.remotes = response['remote']
-
-    # local_instance_ids = [match['from_instance'] for match in self.matches]
-    # response = network.query("GET", "collab/instances/",
-    #                          params={"id": local_instance_ids}, json=True)
-    # self.local_instances = {data['id']: data for data in response}
-
-    # remote_instance_ids = [match['from_instance'] for match in self.matches]
-    # response = network.query("GET", "collab/instances/",
-    #                          params={"id": remote_instance_ids}, json=True)
-    # self.remote_instances = {data['id']: data for data in response}
-
-    # instance_ids = local_instance_ids + remote_instance_ids
-    # response = network.query("GET", "collab/annotations/",
-    #                          params={"instance": instance_ids}, json=True)
-    # self.annotations = {data['instance']: data for data in response}
 
     self.script_code = ("# Filter out any function with "
                         "a name that starts with 'sub_'\n"
@@ -315,7 +300,7 @@ class MatchResultDialog(base.BaseDialog):
         remote_item = local_item.child(local_item.childCount() - 1)
         remote_item.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Checked)
 
-  def shouldFilter(self, context):
+  def should_filter(self, context):
     if self.script_compile:
       try:
         exec(self.script_compile, context)
@@ -338,7 +323,7 @@ class MatchResultDialog(base.BaseDialog):
                           # 'docscore': local_obj["documentation_score"],
                           # 'documentation': local_obj['documentation'],
                           'local': True}
-      if self.shouldFilter(context):
+      if self.should_filter(context):
         continue
 
       local_root = MatchTreeWidgetItem(local_id, self.tree)
@@ -370,7 +355,7 @@ class MatchResultDialog(base.BaseDialog):
                              'key': match_obj["type"],
                              # TODO: a remote match can also be local
                              'local': False}
-        if self.shouldFilter(context):
+        if self.should_filter(context):
           continue
 
         remote_root = MatchTreeWidgetItem(remote_id, local_root)

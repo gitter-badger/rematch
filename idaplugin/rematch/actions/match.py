@@ -198,4 +198,4 @@ class MatchAction(base.BoundFileAction):
     self.pbar = None
 
     self.results = MatchResultDialog(self.task_id)
-    self.show()
+    self.results.show()

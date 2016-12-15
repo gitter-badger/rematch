@@ -150,16 +150,9 @@ class MatchResultDialog(base.BaseDialog):
     self.tree.setColumnWidth(self.MATCH_NAME_COLUMN, 150)
 
     # other tree properties
-    self.tree.setAutoFillBackground(False)
     self.tree.setFrameShape(QtWidgets.QFrame.NoFrame)
-    self.tree.setTabKeyNavigation(True)
-    self.tree.setProperty("showDropIndicator", False)
     self.tree.setAlternatingRowColors(True)
     self.tree.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectItems)
-    self.tree.setRootIsDecorated(True)
-    self.tree.setUniformRowHeights(False)
-    self.tree.setMinimumSize(QtCore.QSize(0, 16777215))
-    self.tree.setStyleSheet("QWidget {color: #000000;}")
 
     self.tree.setSortingEnabled(True)
     self.tree.sortItems(self.MATCH_SCORE_COLUMN, QtCore.Qt.DescendingOrder)

@@ -21,7 +21,7 @@ class ResultScriptDialog(base.BaseDialog):
       os.makedirs(self.scripts_path)
 
     for script_name in os.listdir(self.scripts_path):
-      if script_name.endswith(".py"):
+      if script_name.endswith(".pyf"):
         self.cb.addItem(script_name)
 
     if self.cb.count() > 0:
@@ -124,7 +124,7 @@ class ResultScriptDialog(base.BaseDialog):
     current_file = self.cb.currentText()
     fpath, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Data File",
                                                      self.scripts_path,
-                                                     "Python files (*.py)")
+                                                     "Python files (*.pyf)")
     if not fpath:
       return
 
@@ -133,7 +133,7 @@ class ResultScriptDialog(base.BaseDialog):
 
     self.cb.clear()
     for file in os.listdir(self.scripts_path):
-      if file.endswith(".py"):
+      if file.endswith(".pyf"):
         self.cb.addItem(file)
     self.cb.setCurrentText(current_file)
 

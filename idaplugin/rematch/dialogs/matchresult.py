@@ -45,38 +45,29 @@ class SearchTreeWidget(QtWidgets.QTreeWidget):
     self.search_box = search_box
     self.match_column = match_column
     self.search_box.textEdited.connect(self.search)
+    self.search_box.returnPressed.connect(self.search)
 
   def keyPressEvent(self, event):
-    super(SearchTreeWidget, self).keyPressEvent(self, event)
     if event.text():
       self.search_box.keyPressEvent(event)
-    elif event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
-      self.search(self.search_box.text())
+    else:
+      super(SearchTreeWidget, self).keyPressEvent(event)
 
-  # TODO: search starting at currently selected item, allow searching next item
-  def search(self, text):
-    if not text:
-      return
+  def search(self, _=None):
+    del _
 
-    root = self.invisibleRootItem()
-
-    # search in the local elments first
-    for local_index in range(root.childCount()):
-      local_item = root.child(local_index)
-      if text.lower() in local_item.text(self.match_column).lower():
-        local_item.setSelected(True)
-        self.setCurrentItem(local_item, self.match_column)
+    text = self.search_box.text().lower()
+    start = self.currentItem()
+    it = QtWidgets.QTreeWidgetItemIterator(self.currentItem())
+    it += 1
+    while it.value() != start:
+      if it.value() is None:
+        it = QtWidgets.QTreeWidgetItemIterator(self.topLevelItem(0))
+      if text in it.value().text(self.match_column).lower():
+        self.setCurrentItem(it.value())
+        self.scrollToItem(it.value())
         return
-
-    # search in the remote elments
-    for local_index in range(root.childCount()):
-      local_item = root.child(local_index)
-      for remote_index in range(local_item.childCount()):
-        remote_item = local_item.child(remote_index)
-        if text.lower() in remote_item.text(self.match_column).lower():
-          remote_item.setSelected(True)
-          self.setCurrentItem(remote_item, self.match_column)
-          return
+      it += 1
 
 
 class MatchResultDialog(base.BaseDialog):
@@ -152,8 +143,6 @@ class MatchResultDialog(base.BaseDialog):
     # other tree properties
     self.tree.setFrameShape(QtWidgets.QFrame.NoFrame)
     self.tree.setAlternatingRowColors(True)
-    self.tree.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectItems)
-
     self.tree.setSortingEnabled(True)
     self.tree.sortItems(self.MATCH_SCORE_COLUMN, QtCore.Qt.DescendingOrder)
 
@@ -320,7 +309,8 @@ class MatchResultDialog(base.BaseDialog):
         continue
 
       local_root = MatchTreeWidgetItem(local_id, self.tree)
-      local_root.setFlags(QtCore.Qt.ItemIsEnabled)
+      local_root.setFlags(QtCore.Qt.ItemIsEnabled |
+                          QtCore.Qt.ItemIsSelectable)
       local_root.setText(self.MATCH_NAME_COLUMN, local_name)
       local_root.setForeground(self.MATCH_NAME_COLUMN,
                                self.LOCAL_ELEMENT_COLOR)

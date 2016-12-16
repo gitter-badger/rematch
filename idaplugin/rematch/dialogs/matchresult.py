@@ -91,14 +91,7 @@ class MatchResultDialog(base.BaseDialog):
     self.locals = {obj['id']: obj for obj in response['local']}
     self.remotes = response['remote']
 
-    self.script_code = ("# Filter out any function with "
-                        "a name that starts with 'sub_'\n"
-                        "if remote:\n"
-                        "  this = remote\n"
-                        "else:\n"
-                        "  this = local\n"
-                        "if this['name'].startswith('sub_'):\n"
-                        "  Filter = True")
+    self.script_code = None
     self.script_compile = None
     self.script_dialog = None
 
@@ -228,12 +221,12 @@ class MatchResultDialog(base.BaseDialog):
     self.blockSignals(False)
 
   def filter(self):
-    self.script_dialog = resultscript.ResultScriptDialog(self.script_code)
+    self.script_dialog = resultscript.ResultScriptDialog()
     self.script_dialog.accepted.connect(self.update_filter)
     self.script_dialog.show()
 
   def update_filter(self):
-    self.script_code = self.script_dialog.getFilter()
+    self.script_code = self.script_dialog.get_code()
     self.script_dialog = None
 
     self.script_compile = compile(self.script_code, '<input>', 'exec')
@@ -287,8 +280,17 @@ class MatchResultDialog(base.BaseDialog):
       try:
         exec(self.script_compile, context)
       except Exception as ex:
-        idc.Warning("Filter function encountered a runtime error: {}.\n"
-                    "proceeding with intermidiate Filter value".format(ex))
+        errors = context.get('Errors', 'stop')
+        if errors == 'stop':
+          self.script_compile = None
+          idc.Warning("Filter function encountered a runtime error: {}.\n"
+                      "Disabling filters.".format(ex))
+        elif errors == 'filter':
+          pass
+        elif errors == 'hide':
+          return True
+        elif 'errors' == 'show':
+          return True
     return 'Filter' in context and context['Filter']
 
   def populate_tree(self):

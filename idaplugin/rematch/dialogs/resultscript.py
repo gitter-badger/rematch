@@ -2,18 +2,17 @@ import os
 
 from ..idasix import QtWidgets
 
+from . import base
 from .. import utils
 
 
-class ResultScriptDialog(QtWidgets.QDialog):
-  def __init__(self, script_code):
-    super(ResultScriptDialog, self).__init__()
-    self.setWindowTitle("Result script")
+class ResultScriptDialog(base.BaseDialog):
+  def __init__(self, *args, **kwargs):
+    super(ResultScriptDialog, self).__init__("Result script", *args, **kwargs)
 
     self.scripts_path = utils.getPluginPath('scripts')
 
     self.script_txt = QtWidgets.QTextEdit()
-    self.script_txt.setText(script_code)
     self.statusLbl = QtWidgets.QLabel()
     self.statusLbl.setStyleSheet("color: red;")
     self.cb = QtWidgets.QComboBox()
@@ -29,22 +28,21 @@ class ResultScriptDialog(QtWidgets.QDialog):
       default_script = os.path.join(self.scripts_path, self.cb.itemText(0))
       with open(default_script, "r") as fh:
         data = fh.read()
-        self.scriptTxt.setText(data)
-
-    size_policy = QtWidgets.Qsize_policy(QtWidgets.Qsize_policy.Fixed,
-                                         QtWidgets.Qsize_policy.Fixed)
+        self.script_txt.setText(data)
 
     new_btn = QtWidgets.QPushButton("&New")
     save_btn = QtWidgets.QPushButton("&Save")
     apply_btn = QtWidgets.QPushButton("&Apply")
     cancel_btn = QtWidgets.QPushButton("&Cancel")
 
-    new_btn.setsize_policy(size_policy)
-    save_btn.setsize_policy(size_policy)
-    apply_btn.setsize_policy(size_policy)
-    cancel_btn.setsize_policy(size_policy)
+    size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                        QtWidgets.QSizePolicy.Fixed)
+    new_btn.setSizePolicy(size_policy)
+    save_btn.setSizePolicy(size_policy)
+    apply_btn.setSizePolicy(size_policy)
+    cancel_btn.setSizePolicy(size_policy)
 
-    button_lyt = QtWidgets.GridBoxLayout()
+    button_lyt = QtWidgets.QGridLayout()
     button_lyt.addWidget(new_btn, 0, 0)
     button_lyt.addWidget(save_btn, 0, 1)
     button_lyt.addWidget(apply_btn, 1, 0)
@@ -52,8 +50,8 @@ class ResultScriptDialog(QtWidgets.QDialog):
 
     apply_btn.clicked.connect(self.validate)
     cancel_btn.clicked.connect(self.reject)
-    save_btn.clicked.connect(self.SaveFile)
-    new_btn.clicked.connect(self.NewFilter)
+    save_btn.clicked.connect(self.save_file)
+    new_btn.clicked.connect(self.new_filter)
 
     self.cb.resize(200, 200)
 
@@ -62,16 +60,14 @@ class ResultScriptDialog(QtWidgets.QDialog):
                     "<b>Filter</b>: defaults to False. determines wether "
                     "this item should be filtered out (you should change "
                     "this)",
-                    "<b>Errors</b>: defaults to 'filter'. when a runtime "
+                    "<b>Errors</b>: defaults to 'stop'. when a runtime "
                     "error occures in script code this will help determine "
                     "how to continue.",
                     "There are several valid values:",
+                    " - '<b>stop</b>': handle runtime errors as ",
+                    "non-continual. stop using filters immidiately.",
                     " - '<b>filter</b>': filter this function using whatever "
                     "value was in Filter at the time of the error",
-                    " - '<b>silent_filter</b>': filter using whatever value "
-                    "in Filter, but do not present error messages.",
-                    " - '<b>break</b>': handle runtime errors as "
-                    "non-continual. stop presenting matches immidiately.",
                     " - '<b>hide</b>': hide all functions in which a "
                     "filtering error occured, after displaying a warning.",
                     " - '<b>show</b>': show all functions in which a "
@@ -107,8 +103,6 @@ class ResultScriptDialog(QtWidgets.QDialog):
                     "user discretion is advised."]
     help_tooltip = "\n".join(help_tooltip)
 
-    self.layout = QtWidgets.QVBoxLayout()
-
     helpLbl = QtWidgets.QLabel("Insert native python code to filter matches:"
                                "\n(Hover for more information)")
     helpLbl.setToolTip(help_tooltip)
@@ -118,18 +112,19 @@ class ResultScriptDialog(QtWidgets.QDialog):
     ComboLayout.addWidget(ComboLayoutText)
     ComboLayout.addWidget(self.cb)
 
-    self.layout.addWidget(helpLbl)
-    self.layout.addLayout(ComboLayout)
-    self.layout.addWidget(self.script_txt)
-    self.layout.addWidget(self.statusLbl)
-    self.layout.addLayout(button_lyt)
+    self.base_layout.addWidget(helpLbl)
+    self.base_layout.addLayout(ComboLayout)
+    self.base_layout.addWidget(self.script_txt)
+    self.base_layout.addWidget(self.statusLbl)
+    self.base_layout.addLayout(button_lyt)
 
-    self.setLayout(self.layout)
-    self.cb.currentIndexChanged.connect(self.ComboBoxChange)
+    self.cb.currentTextChanged.connect(self.ComboBoxChange)
 
-  def SaveFile(self):
-    fpath = QtWidgets.QFileDialog.getSaveFileName(self, "Save Data File", ""
-                                                  "Python files (*.py)")
+  def save_file(self):
+    current_file = self.cb.currentText()
+    fpath, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Data File",
+                                                     self.scripts_path,
+                                                     "Python files (*.py)")
     if not fpath:
       return
 
@@ -140,7 +135,7 @@ class ResultScriptDialog(QtWidgets.QDialog):
     for file in os.listdir(self.scripts_path):
       if file.endswith(".py"):
         self.cb.addItem(file)
-        # TODO: set the default as the file juss saved
+    self.cb.setCurrentText(current_file)
 
   def new_filter(self):
     if not self.cb.itemText(0) == "New":
@@ -156,12 +151,12 @@ class ResultScriptDialog(QtWidgets.QDialog):
       data = ""
     self.script_txt.setText(data)
 
-  def get_filter(self):
+  def get_code(self):
     return self.script_txt.toPlainText()
 
   def validate(self):
     try:
-      compile(self.getFilter(), '<input>', 'exec')
+      compile(self.get_code(), '<input>', 'exec')
     except Exception as ex:
       self.statusLbl.setText(str(ex))
     else:

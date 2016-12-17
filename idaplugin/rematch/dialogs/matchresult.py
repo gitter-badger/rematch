@@ -5,7 +5,6 @@ from .. idasix import QtGui, QtWidgets, QtCore
 
 from . import base
 from .. import network
-from .. import exceptions
 
 from . import resultscript
 
@@ -85,11 +84,8 @@ class MatchResultDialog(base.BaseDialog):
     super(MatchResultDialog, self).__init__(*args, **kwargs)
 
     self.task_id = task_id
-
-    matches_url = "collab/tasks/{}/matches/".format(self.task_id)
-    response = network.query("GET", matches_url, json=True)
-    self.locals = {obj['id']: obj for obj in response['local']}
-    self.remotes = response['remote']
+    self.locals = {}
+    self.remotes = {}
 
     self.script_code = None
     self.script_compile = None
@@ -163,9 +159,20 @@ class MatchResultDialog(base.BaseDialog):
     self.base_layout.addWidget(self.splitter)
 
     # connect events to handle
-    self.tree.itemChanged.connect(self.itemChanged)
-    self.tree.itemSelectionChanged.connect(self.itemSelectionChanged)
-    self.tree.itemDoubleClicked.connect(self.itemDoubleClicked)
+    self.tree.itemChanged.connect(self.item_changed)
+    self.tree.itemSelectionChanged.connect(self.item_selection_changed)
+    self.tree.itemDoubleClicked.connect(self.item_double_clicked)
+
+    self.refresh_tree()
+
+  def refresh_tree(self):
+    matches_url = "collab/tasks/{}/matches/".format(self.task_id)
+    network.delayed_query("GET", matches_url, json=True,
+                          callback=self.handle_matches)
+
+  def handle_matches(self, response):
+    self.locals = {obj['id']: obj for obj in response['local']}
+    self.remotes = response['remote']
 
     self.populate_tree()
     self.set_checks()
@@ -176,7 +183,7 @@ class MatchResultDialog(base.BaseDialog):
     else:
       return self.remotes[obj_id]
 
-  def itemSelectionChanged(self):
+  def item_selection_changed(self):
     if not self.tree.selectedItems():
       return
 
@@ -188,22 +195,22 @@ class MatchResultDialog(base.BaseDialog):
     id1 = item.parent().api_id
     id2 = item.api_id
 
-    try:
-      response = network.query("GET", "display/compare/",
-                               params={"id1": id1, "id2": id2}, json=False)
-      self.textBrowser.setHtml(response)
-      self.textBrowser.reload()
-    except exceptions.QueryException:
-      pass
+    network.delayed_query("GET", "display/compare/", json=False,
+                          params={"id1": id1, "id2": id2},
+                          callback=self.handle_display_change)
 
-  def itemDoubleClicked(self, item, column):
+  def handle_display_change(self, response):
+    self.textBrowser.setHtml(response)
+    self.textBrowser.reload()
+
+  def item_double_clicked(self, item, column):
     del column
 
     if item.parent() is None:
       idaapi.jumpto(self.get_obj(item.api_id)['offset'])
       item.setExpanded(not item.isExpanded())
 
-  def itemChanged(self, item, column):
+  def item_changed(self, item, column):
     # (is checkbox column?)
     if not column == self.CHECKBOX_COLUMN:
       return

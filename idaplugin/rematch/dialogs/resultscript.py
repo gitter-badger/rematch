@@ -30,28 +30,28 @@ class ResultScriptDialog(base.BaseDialog):
         data = fh.read()
         self.script_txt.setText(data)
 
-    new_btn = QtWidgets.QPushButton("&New")
-    save_btn = QtWidgets.QPushButton("&Save")
-    apply_btn = QtWidgets.QPushButton("&Apply")
-    cancel_btn = QtWidgets.QPushButton("&Cancel")
+    self.new_btn = QtWidgets.QPushButton("&New")
+    self.save_btn = QtWidgets.QPushButton("&Save")
+    self.apply_btn = QtWidgets.QPushButton("&Apply")
+    self.cancel_btn = QtWidgets.QPushButton("&Cancel")
 
     size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
                                         QtWidgets.QSizePolicy.Fixed)
-    new_btn.setSizePolicy(size_policy)
-    save_btn.setSizePolicy(size_policy)
-    apply_btn.setSizePolicy(size_policy)
-    cancel_btn.setSizePolicy(size_policy)
+    self.new_btn.setSizePolicy(size_policy)
+    self.save_btn.setSizePolicy(size_policy)
+    self.apply_btn.setSizePolicy(size_policy)
+    self.cancel_btn.setSizePolicy(size_policy)
 
-    button_lyt = QtWidgets.QGridLayout()
-    button_lyt.addWidget(new_btn, 0, 0)
-    button_lyt.addWidget(save_btn, 0, 1)
-    button_lyt.addWidget(apply_btn, 1, 0)
-    button_lyt.addWidget(cancel_btn, 1, 1)
+    self.button_layout = QtWidgets.QGridLayout()
+    self.button_layout.addWidget(self.new_btn, 0, 0)
+    self.button_layout.addWidget(self.save_btn, 0, 1)
+    self.button_layout.addWidget(self.apply_btn, 1, 0)
+    self.button_layout.addWidget(self.cancel_btn, 1, 1)
 
-    apply_btn.clicked.connect(self.validate)
-    cancel_btn.clicked.connect(self.reject)
-    save_btn.clicked.connect(self.save_file)
-    new_btn.clicked.connect(self.new_script)
+    self.apply_btn.clicked.connect(self.validate)
+    self.cancel_btn.clicked.connect(self.reject)
+    self.save_btn.clicked.connect(self.save_file)
+    self.new_btn.clicked.connect(self.new_script)
 
     self.cb.resize(200, 200)
 
@@ -103,22 +103,21 @@ class ResultScriptDialog(base.BaseDialog):
                     "user discretion is advised."]
     help_tooltip = "\n".join(help_tooltip)
 
-    help_lbl = QtWidgets.QLabel("Insert native python code to filter matches:"
-                               "\n(Hover for more information)")
-    help_lbl.setToolTip(help_tooltip)
+    self.help_lbl = QtWidgets.QLabel("Insert native python code to filter "
+                                     "matches:\n(Hover for more information)")
+    self.help_lbl.setToolTip(help_tooltip)
 
-    ComboLayout = QtWidgets.QHBoxLayout()
-    ComboLayoutText = QtWidgets.QLabel("Script - ")
-    ComboLayout.addWidget(ComboLayoutText)
-    ComboLayout.addWidget(self.cb)
+    self.combo_layout = QtWidgets.QHBoxLayout()
+    self.combo_layout.addWidget(QtWidgets.QLabel("Script - "))
+    self.combo_layout.addWidget(self.cb)
 
-    self.base_layout.addWidget(help_lbl)
-    self.base_layout.addLayout(ComboLayout)
+    self.base_layout.addWidget(self.help_lbl)
+    self.base_layout.addLayout(self.combo_layout)
     self.base_layout.addWidget(self.script_txt)
     self.base_layout.addWidget(self.status_lbl)
-    self.base_layout.addLayout(button_lyt)
+    self.base_layout.addLayout(self.button_layout)
 
-    self.cb.currentTextChanged.connect(self.ComboBoxChange)
+    self.cb.currentTextChanged.connect(self.combobox_change)
 
   def save_file(self):
     current_file = self.cb.currentText()
@@ -142,7 +141,7 @@ class ResultScriptDialog(base.BaseDialog):
       self.cb.insertItem(0, "New")
       self.cb.setCurrentIndex(0)
 
-  def ComboBoxChange(self, new_value):
+  def combobox_change(self, new_value):
     fpath = os.path.join(self.scripts_path, new_value)
     if os.path.isfile(fpath):
       with open(fpath, "r") as myfile:

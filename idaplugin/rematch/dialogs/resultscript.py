@@ -13,8 +13,8 @@ class ResultScriptDialog(base.BaseDialog):
     self.scripts_path = utils.getPluginPath('scripts')
 
     self.script_txt = QtWidgets.QTextEdit()
-    self.statusLbl = QtWidgets.QLabel()
-    self.statusLbl.setStyleSheet("color: red;")
+    self.status_lbl = QtWidgets.QLabel()
+    self.status_lbl.setStyleSheet("color: red;")
     self.cb = QtWidgets.QComboBox()
 
     if not os.path.exists(self.scripts_path):
@@ -51,7 +51,7 @@ class ResultScriptDialog(base.BaseDialog):
     apply_btn.clicked.connect(self.validate)
     cancel_btn.clicked.connect(self.reject)
     save_btn.clicked.connect(self.save_file)
-    new_btn.clicked.connect(self.new_filter)
+    new_btn.clicked.connect(self.new_script)
 
     self.cb.resize(200, 200)
 
@@ -103,19 +103,19 @@ class ResultScriptDialog(base.BaseDialog):
                     "user discretion is advised."]
     help_tooltip = "\n".join(help_tooltip)
 
-    helpLbl = QtWidgets.QLabel("Insert native python code to filter matches:"
+    help_lbl = QtWidgets.QLabel("Insert native python code to filter matches:"
                                "\n(Hover for more information)")
-    helpLbl.setToolTip(help_tooltip)
+    help_lbl.setToolTip(help_tooltip)
 
     ComboLayout = QtWidgets.QHBoxLayout()
     ComboLayoutText = QtWidgets.QLabel("Script - ")
     ComboLayout.addWidget(ComboLayoutText)
     ComboLayout.addWidget(self.cb)
 
-    self.base_layout.addWidget(helpLbl)
+    self.base_layout.addWidget(help_lbl)
     self.base_layout.addLayout(ComboLayout)
     self.base_layout.addWidget(self.script_txt)
-    self.base_layout.addWidget(self.statusLbl)
+    self.base_layout.addWidget(self.status_lbl)
     self.base_layout.addLayout(button_lyt)
 
     self.cb.currentTextChanged.connect(self.ComboBoxChange)
@@ -137,7 +137,7 @@ class ResultScriptDialog(base.BaseDialog):
         self.cb.addItem(file)
     self.cb.setCurrentText(current_file)
 
-  def new_filter(self):
+  def new_script(self):
     if not self.cb.itemText(0) == "New":
       self.cb.insertItem(0, "New")
       self.cb.setCurrentIndex(0)
@@ -158,6 +158,6 @@ class ResultScriptDialog(base.BaseDialog):
     try:
       compile(self.get_code(), '<input>', 'exec')
     except Exception as ex:
-      self.statusLbl.setText(str(ex))
+      self.status_lbl.setText(str(ex))
     else:
       self.accept()

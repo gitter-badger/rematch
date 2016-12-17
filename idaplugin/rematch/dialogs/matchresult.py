@@ -98,26 +98,26 @@ class MatchResultDialog(base.BaseDialog):
     # buttons
     self.btn_set = QtWidgets.QPushButton('&Select best')
     self.btn_clear = QtWidgets.QPushButton('&Clear')
-    self.btn_filter = QtWidgets.QPushButton('Fi&lter')
+    self.btn_script = QtWidgets.QPushButton('Fi&lter')
     self.btn_apply = QtWidgets.QPushButton('&Apply Matches')
 
     size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
                                         QtWidgets.QSizePolicy.Fixed)
     self.btn_set.setSizePolicy(size_policy)
     self.btn_clear.setSizePolicy(size_policy)
-    self.btn_filter.setSizePolicy(size_policy)
+    self.btn_script.setSizePolicy(size_policy)
     self.btn_apply.setSizePolicy(size_policy)
 
     # buttons layout
     self.hlayoutButtons = QtWidgets.QHBoxLayout()
     self.hlayoutButtons.addWidget(self.btn_set)
     self.hlayoutButtons.addWidget(self.btn_clear)
-    self.hlayoutButtons.addWidget(self.btn_filter)
+    self.hlayoutButtons.addWidget(self.btn_script)
     self.hlayoutButtons.addWidget(self.btn_apply)
 
     self.btn_set.clicked.connect(self.set_checks)
     self.btn_clear.clicked.connect(self.clear_checks)
-    self.btn_filter.clicked.connect(self.filter)
+    self.btn_script.clicked.connect(self.show_script)
     self.btn_apply.clicked.connect(self.apply_matches)
 
     # matches tree
@@ -220,12 +220,12 @@ class MatchResultDialog(base.BaseDialog):
         curr_child.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
     self.blockSignals(False)
 
-  def filter(self):
+  def show_script(self):
     self.script_dialog = resultscript.ResultScriptDialog()
-    self.script_dialog.accepted.connect(self.update_filter)
+    self.script_dialog.accepted.connect(self.update_script)
     self.script_dialog.show()
 
-  def update_filter(self):
+  def update_script(self):
     self.script_code = self.script_dialog.get_code()
     self.script_dialog = None
 

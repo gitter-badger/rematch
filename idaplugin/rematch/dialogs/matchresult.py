@@ -250,8 +250,8 @@ class MatchResultDialog(base.BaseDialog):
         remote_item = local_item.child(remote_index)
         if remote_item.checkState(self.CHECKBOX_COLUMN):
           # TODO: apply metches
-          # remote_obj = self.documentation[remote_item.api_id]
-          # remote_docs = remote_obj["documentation"]
+          # item_obj = self.documentation[remote_item.api_id]
+          # remote_docs = item_obj["documentation"]
           # apply_documentation(local_item.ea, remote_docs)
           break
       apply_pbar.setValue(apply_pbar.value() + 1)
@@ -282,22 +282,39 @@ class MatchResultDialog(base.BaseDialog):
         remote_item = local_item.child(local_item.childCount() - 1)
         remote_item.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Checked)
 
+  def build_context(self, local, match=None, remote=None):
+    context = {'Filter': False}
+
+    local = {'offset': local['offset'], 'name': name_obj(local),
+             'local': True}
+    context['local'] = local
+
+    if remote:
+      remote = {'offset': remote['offset'], 'name': name_obj(remote),
+                'score': match["score"], 'key': match["type"],
+                'local': remote['id'] in self.locals.keys()}
+    context['remote'] = remote
+
+    return context
+
   def should_filter(self, context):
-    if self.script_compile:
-      try:
-        exec(self.script_compile, context)
-      except Exception as ex:
-        errors = context.get('Errors', 'stop')
-        if errors == 'stop':
-          self.script_compile = None
-          idc.Warning("Filter function encountered a runtime error: {}.\n"
-                      "Disabling filters.".format(ex))
-        elif errors == 'filter':
-          pass
-        elif errors == 'hide':
-          return True
-        elif 'errors' == 'show':
-          return True
+    if not self.script_compile:
+      return False
+
+    try:
+      exec(self.script_compile, context)
+    except Exception as ex:
+      errors = context.get('Errors', 'stop')
+      if errors == 'stop':
+        self.script_compile = None
+        idc.Warning("Filter function encountered a runtime error: {}.\n"
+                    "Disabling filters.".format(ex))
+      elif errors == 'filter':
+        pass
+      elif errors == 'hide':
+        return True
+      elif 'errors' == 'show':
+        return False
     return 'Filter' in context and context['Filter']
 
   def populate_tree(self):
@@ -305,77 +322,21 @@ class MatchResultDialog(base.BaseDialog):
                         QtCore.Qt.DescendingOrder)
     self.tree.setSortingEnabled(False)
 
-    for local_id, local_obj in self.locals.items():
-      local_ea = local_obj['offset']
-      local_name = name_obj(local_obj)
-
-      context = {'Filter': False, 'remote': None}
-      context['local'] = {'ea': local_ea, 'name': local_name,
-                          # 'docscore': local_obj["documentation_score"],
-                          # 'documentation': local_obj['documentation'],
-                          'local': True}
+    for local_obj in self.locals.values():
+      context = self.build_context(local_obj)
       if self.should_filter(context):
         continue
 
-      local_root = MatchTreeWidgetItem(local_id, self.tree)
-      local_root.setFlags(QtCore.Qt.ItemIsEnabled |
-                          QtCore.Qt.ItemIsSelectable)
-      local_root.setText(self.MATCH_NAME_COLUMN, local_name)
-      local_root.setForeground(self.MATCH_NAME_COLUMN,
-                               self.LOCAL_ELEMENT_COLOR)
-      local_root.setToolTip(self.MATCH_NAME_COLUMN, self.LOCAL_ELEMENT_TOOLTIP)
-      # local_root.setText(self.MATCH_KEY_COLUMN,
-      #                    str(self.documentation[local_id]["match_key"]))
-
-      self.tree.expandItem(local_root)
-
+      local_item = self.populate_item(self.tree, local_obj)
       for match_obj in local_obj['matches']:
-        remote_id = match_obj['to_instance']
-        remote_obj = self.remotes[remote_id]
-        remote_ea = remote_obj['offset']
-        remote_name = name_obj(remote_obj)
+        remote_obj = self.remotes[match_obj['to_instance']]
 
-        context = {'Filter': False}
-        context['local'] = {'ea': local_ea, 'name': local_name,
-                            # 'docscore': local_obj["documentation_score"],
-                            # 'documentation': local_obj['documentation'],
-                            'local': True}
-        context['remote'] = {'ea': remote_ea, 'name': remote_name,
-                             # 'docscore': remote_obj["documentation_score"],
-                             # 'documentation': remote_obj['documentation'],
-                             'score': match_obj["score"],
-                             'key': match_obj["type"],
-                             # TODO: a remote match can also be local
-                             'local': False}
+        context = self.build_context(local_obj, match_obj, remote_obj)
         if self.should_filter(context):
           continue
 
-        remote_root = MatchTreeWidgetItem(remote_id, local_root)
-        remote_root.setFlags(QtCore.Qt.ItemIsUserCheckable |
-                             QtCore.Qt.ItemIsEnabled |
-                             QtCore.Qt.ItemIsSelectable)
-
-        remote_root.setText(self.MATCH_NAME_COLUMN, "{0}".format(remote_name))
-
-        if remote_id in self.locals:
-          remote_root.setForeground(self.MATCH_NAME_COLUMN,
-                                    self.LOCAL_ELEMENT_COLOR)
-          remote_root.setToolTip(self.MATCH_NAME_COLUMN,
-                                 self.LOCAL_ELEMENT_TOOLTIP)
-        else:
-          remote_root.setToolTip(self.MATCH_NAME_COLUMN,
-                                 self.REMOTE_ELEMENT_TOOLTIP)
-
-        match_score = match_obj['score']
-        # TODO: get a real score here
-        doc_score = 0
-        remote_root.setText(self.MATCH_SCORE_COLUMN,
-                            str(round(match_score, 2)))
-        remote_root.setText(self.DOCUMENTATION_SCORE_COLUMN,
-                            str(round(doc_score, 2)))
-        remote_root.setText(self.MATCH_KEY_COLUMN,
-                            str(match_obj['type']))
-        remote_root.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
+        self.populate_item(local_item, remote_obj, match_obj)
+      self.tree.expandItem(local_item)
 
     # fake click on first child item so browser won't show a blank page
     root = self.tree.invisibleRootItem()
@@ -383,3 +344,35 @@ class MatchResultDialog(base.BaseDialog):
       if root.child(0).childCount():
         item = root.child(0).child(0)
         item.setSelected(True)
+
+  def populate_item(self, parent_item, item_obj, match_obj=None):
+    item_id = item_obj['id']
+    item_name = name_obj(item_obj)
+
+    tree_item = MatchTreeWidgetItem(item_id, parent_item)
+    item_flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+    if match_obj:
+      item_flags |= QtCore.Qt.ItemIsUserCheckable
+
+    tree_item.setFlags(item_flags)
+    tree_item.setText(self.MATCH_NAME_COLUMN, item_name)
+
+    if item_id in self.locals:
+      tree_item.setForeground(self.MATCH_NAME_COLUMN,
+                                self.LOCAL_ELEMENT_COLOR)
+      tree_item.setToolTip(self.MATCH_NAME_COLUMN,
+                             self.LOCAL_ELEMENT_TOOLTIP)
+    else:
+      tree_item.setToolTip(self.MATCH_NAME_COLUMN,
+                             self.REMOTE_ELEMENT_TOOLTIP)
+
+    if match_obj:
+      tree_item.setText(self.MATCH_SCORE_COLUMN,
+                          str(round(match_obj['score'], 2)))
+      tree_item.setText(self.DOCUMENTATION_SCORE_COLUMN,
+                          str(round(0, 2)))
+      tree_item.setText(self.MATCH_KEY_COLUMN,
+                          str(match_obj['type']))
+      tree_item.setCheckState(self.CHECKBOX_COLUMN, QtCore.Qt.Unchecked)
+
+    return tree_item

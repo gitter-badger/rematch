@@ -141,19 +141,17 @@ class MatchResultDialog(base.BaseDialog):
 
     # splitter for code highlighting and tree
     self.frame = QtWidgets.QFrame()
-    self.frame.sizeHint = lambda: QtCore.QSize(-1, -1)
     self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-    self.vlayoutMainFrame = QtWidgets.QVBoxLayout()
-    self.vlayoutMainFrame.addWidget(self.tree)
-    self.vlayoutMainFrame.addWidget(self.search_box)
-    self.vlayoutMainFrame.addLayout(self.hlayoutButtons)
-    self.frame.setLayout(self.vlayoutMainFrame)
+    self.frame_layout = QtWidgets.QVBoxLayout()
+    self.frame_layout.addWidget(self.tree)
+    self.frame_layout.addWidget(self.search_box)
+    self.frame_layout.addLayout(self.hlayoutButtons)
+    self.frame.setLayout(self.frame_layout)
 
     self.splitter = QtWidgets.QSplitter()
     self.splitter.setOrientation(QtCore.Qt.Horizontal)
     self.splitter.addWidget(self.frame)
     self.splitter.addWidget(self.textBrowser)
-    self.splitter.setSizes([150, 650])
 
     # main layout
     self.base_layout.addWidget(self.splitter)

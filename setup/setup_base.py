@@ -20,7 +20,7 @@ def find_packages_relative(base):
   return [base] + [os.path.join(base, package)
            for package in find_packages(base)]
 
-def build_setup(name, version_path, package_base, package_data):
+def build_setup(name, package_name, version_path, package_base, package_data):
   # generate install_requires based on requirements.txt
   requirements_path = os.path.join(package_base, "requirements.txt")
   if os.path.exists(requirements_path):
@@ -31,8 +31,13 @@ def build_setup(name, version_path, package_base, package_data):
   else:
     install_requires = []
 
+  test_requirements_path = os.path.join("tests", name, "requirements.txt")
+  extras_require = {}
+  if os.path.exists(test_requirements_path):
+    extras_require['test'] = get_requirements(test_requirements_path)
+
   setup(
-    name = name,
+    name = package_name,
     version = get_version(version_path),
     author = "Nir Izraeli",
     author_email = "nirizr@gmail.com",
@@ -43,6 +48,7 @@ def build_setup(name, version_path, package_base, package_data):
     url = "https://www.github.com/nirizr/rematch/",
     packages=find_packages_relative(package_base),
     package_data=package_data,
+    extras_require=extras_require,
     install_requires=install_requires,
     long_description=read('README.md'),
     classifiers=[

@@ -13,7 +13,8 @@ class Config(dict):
                        "server": "",
                        },
              "settings": {"update": {"autocheck": True,
-                                     "autoupdate": True},
+                                     "autoupdate": True,
+                                     "skipped": []},
                           "login": {"autologin": True,
                                     "autologout": False}},
              "network": {"threadcount": 10}}

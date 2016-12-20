@@ -6,9 +6,8 @@ from . import logger
 
 class Config(dict):
   DEFAULT = {"debug": False,
-             "git": {"owner": "nirizr",
-                     "repository": "rematch",
-                     "server": "http://api.github.com"},
+             "pypi": {"server": "http://testpypi.python.org",
+                      "package": "rematch-idaplugin"},
              "login": {"username": "",
                        "password": "",
                        "server": "",

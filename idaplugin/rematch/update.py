@@ -18,18 +18,16 @@ def check_update():
   if not config['settings']['update']['autocheck']:
     return
 
-  url = ("repos/{owner}/{repo}/releases/latest"
-         "").format(owner=config['git']['owner'],
-                    repo=config['git']['repository'])
+  url = "pypi/{package}/json".format(package=config['pypi']['package'])
 
-  network.delayed_query("GET", url, server=config['git']['server'], token="",
+  network.delayed_query("GET", url, server=config['pypi']['server'], token="",
                         json=True, callback=handle_update,
                         exception_callback=handle_exception)
 
 
 def handle_update(response):
   local_version = StrictVersion(__version__)
-  remote_version = StrictVersion(response['tag_name'])
+  remote_version = StrictVersion(response['info']['version'])
   logger('update').info("local version: {}, latest version: {}"
                         .format(local_version, remote_version))
 
@@ -60,8 +58,14 @@ def handle_update(response):
     if update == -1:
       return
 
-    # TODO: actually update the plugin
+    # get latest version's package url
+    new_release = response['releases'][remote_version]
+    new_url = new_release[0]['url']
+    update(new_url)
 
+def update(url):
+  logger('update').into("New version package url: {}".format(url))
+  # TODO: actually update
 
 def handle_exception(exception):
   if isinstance(exception, exceptions.NotFoundException):

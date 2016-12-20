@@ -58,10 +58,10 @@ def handle_update(response):
     if update == -1:
       return
 
-    # get latest version's package url
-    new_release = response['releases'][remote_version]
-    new_url = new_release[0]['url']
-    update(new_url)
+  # get latest version's package url
+  new_release = response['releases'][remote_version]
+  new_url = new_release[0]['url']
+  update(new_url)
 
 def update(url):
   logger('update').into("New version package url: {}".format(url))

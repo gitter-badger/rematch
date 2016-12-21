@@ -67,6 +67,7 @@ def handle_update(response):
   new_url = new_release[0]['url']
   update_version(new_url)
 
+
 def update_version(url):
   logger('update').info("New version package url: {}".format(url))
   package_download = urllib2.urlopen(url)
@@ -87,6 +88,7 @@ def update_version(url):
   finally:
     temp_zip.close()
     shutil.rmtree(temp_dir)
+
 
 def handle_exception(exception):
   if isinstance(exception, exceptions.NotFoundException):

@@ -1,13 +1,17 @@
 # objects
 from . import logger
 from . import config
-
-# modules
 from . import network
 from . import exceptions
+from . import utils
 from .version import __version__
 
 # builtin
+import os
+import shutil
+import urllib2
+import tempfile
+import zipfile
 from distutils.version import StrictVersion
 
 # ida
@@ -40,7 +44,7 @@ def handle_update(response):
 
   logger('update').info("update is available")
 
-  if remote_version in config['settings']['update']['skipped']:
+  if str(remote_version) in config['settings']['update']['skipped']:
     logger('update').info("version update marked skip")
     return
 
@@ -59,13 +63,30 @@ def handle_update(response):
       return
 
   # get latest version's package url
-  new_release = response['releases'][remote_version]
+  new_release = response['releases'][str(remote_version)]
   new_url = new_release[0]['url']
-  update(new_url)
+  update_version(new_url)
 
-def update(url):
-  logger('update').into("New version package url: {}".format(url))
-  # TODO: actually update
+def update_version(url):
+  logger('update').info("New version package url: {}".format(url))
+  package_download = urllib2.urlopen(url)
+  temp_zip = tempfile.TemporaryFile()
+  temp_dir = tempfile.mkdtemp()
+
+  try:
+    temp_zip.write(package_download.read())
+    package_zip = zipfile.ZipFile(temp_zip)
+    files = [f for f in package_zip.namelist() if '/idaplugin/' in f]
+    package_zip.extractall(temp_dir, files)
+
+    for filename in files:
+      source = os.path.join(temp_dir, *filename.split('/'))
+      target_file_parts = filename.split('/idaplugin/', 1)[1].split('/')
+      target = utils.getPluginBase(*target_file_parts)
+      shutil.move(source, target)
+  finally:
+    temp_zip.close()
+    shutil.rmtree(temp_dir)
 
 def handle_exception(exception):
   if isinstance(exception, exceptions.NotFoundException):

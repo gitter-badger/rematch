@@ -117,7 +117,8 @@ def assert_response(response, status):
 @pytest.mark.django_db
 @pytest.mark.parametrize('model_name', collab_models.keys())
 def test_empty_lists(client, model_name):
-  response = client.get('/collab/{}/'.format(model_name))
+  response = client.get('/collab/{}/'.format(model_name),
+                        content_type="application/json")
   assert_response(response, status.HTTP_200_OK)
   json_response = response.json()
   assert json_response == []
@@ -130,7 +131,8 @@ def test_model_guest_list(client, admin_user, model_name):
   obj = create_model(model_name, admin_user)
   obj.save()
 
-  response = client.get('/collab/{}/'.format(model_name))
+  response = client.get('/collab/{}/'.format(model_name),
+                        content_type="application/json")
   assert_response(response, status.HTTP_200_OK)
   dct_list = response.json()
   dct = dct_list[-1]
@@ -160,5 +162,6 @@ def test_model_creation(client, admin_client, admin_user, model_name):
   assert_response(response, status.HTTP_201_CREATED)
   projects_created = [response.json()]
 
-  response = client.get('/collab/{}/'.format(model_name))
+  response = client.get('/collab/{}/'.format(model_name),
+                        content_type="application/json")
   assert_eq(response.json(), projects_created)

@@ -56,7 +56,22 @@ class TaskEditSerializer(TaskSerializer):
   source_end = serializers.ReadOnlyField()
 
 
-class TaskInstanceSerializer(serializers.ModelSerializer):
+class SimpleInstanceSerializer(serializers.ModelSerializer):
+  name = serializers.SerializerMethodField()
+
+  class Meta:
+    model = Instance
+    fields = ('id', 'file_version', 'type', 'name', 'offset')
+
+  def get_name(self, instance):
+    try:
+      annotation = Annotation.objects.values_list('data')
+      return annotation.get(instance=instance, type='name')[0]
+    except Annotation.DoesNotExist:
+      return "sub_{:X}".format(instance.offset)
+
+
+class TaskInstanceSerializer(SimpleInstanceSerializer):
   class NestedMatchSerializer(serializers.ModelSerializer):
     class Meta:
       model = Match
@@ -66,7 +81,7 @@ class TaskInstanceSerializer(serializers.ModelSerializer):
 
   class Meta:
     model = Instance
-    fields = ('id', 'type', 'offset', 'matches')
+    fields = ('id', 'type', 'offset', 'name', 'matches')
 
   def __init__(self, task_id, *args, **kwargs):
     super(TaskInstanceSerializer, self).__init__(*args, **kwargs)
@@ -77,12 +92,6 @@ class TaskInstanceSerializer(serializers.ModelSerializer):
                                    task_id=self.task_id)
     serializer = self.NestedMatchSerializer(matches, many=True)
     return serializer.data
-
-
-class SimpleInstanceSerializer(serializers.ModelSerializer):
-  class Meta:
-    model = Instance
-    fields = ('id', 'file_version', 'type', 'offset')
 
 
 class InstanceSerializer(serializers.ModelSerializer):

@@ -9,10 +9,6 @@ from .. import network
 from . import resultscript
 
 
-def name_obj(obj):
-  return obj["name"] if 'name' in obj else "sub_{0:X}".format(obj['offset'])
-
-
 class MatchTreeWidgetItem(QtWidgets.QTreeWidgetItem):
   def __init__(self, api_id, *args, **kwargs):
     super(MatchTreeWidgetItem, self).__init__(*args, **kwargs)
@@ -299,12 +295,12 @@ class MatchResultDialog(base.BaseDialog):
   def build_context(self, local, match=None, remote=None):
     context = {'Filter': False}
 
-    local = {'offset': local['offset'], 'name': name_obj(local),
+    local = {'offset': local['offset'], 'name': local['name'],
              'local': True}
     context['local'] = local
 
     if remote:
-      remote = {'offset': remote['offset'], 'name': name_obj(remote),
+      remote = {'offset': remote['offset'], 'name': remote['name'],
                 'score': match["score"], 'key': match["type"],
                 'local': remote['id'] in self.locals.keys()}
     context['remote'] = remote
@@ -361,7 +357,7 @@ class MatchResultDialog(base.BaseDialog):
 
   def populate_item(self, parent_item, item_obj, match_obj=None):
     item_id = item_obj['id']
-    item_name = name_obj(item_obj)
+    item_name = item_obj['name']
 
     tree_item = MatchTreeWidgetItem(item_id, parent_item)
     item_flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable

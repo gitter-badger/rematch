@@ -164,16 +164,32 @@ class MatchResultDialog(base.BaseDialog):
     self.refresh_tree()
 
   def refresh_tree(self):
+    self.locals = {}
+    self.remotes = {}
+
     matches_url = "collab/tasks/{}/matches/".format(self.task_id)
-    network.delayed_query("GET", matches_url, json=True,
-                          callback=self.handle_matches)
+    network.delayed_query("GET", matches_url, json=True, paginate=True,
+                          params={'limit': 100}, callback=self.handle_matches)
+
+    remotes_url = "collab/tasks/{}/remotes/".format(self.task_id)
+    network.delayed_query("GET", remotes_url, json=True, paginate=True,
+                          params={'limit': 100}, callback=self.handle_remotes)
 
   def handle_matches(self, response):
-    self.locals = {obj['id']: obj for obj in response['local']}
-    self.remotes = response['remote']
+    new_locals = {obj['id']: obj for obj in response['results']}
+    self.locals.update(new_locals)
 
-    self.populate_tree()
-    self.set_checks()
+    if len(self.locals) == response['count']:
+      self.populate_tree()
+      self.set_checks()
+
+  def handle_remotes(self, response):
+    new_remotes = {obj['id']: obj for obj in response['results']}
+    self.remotes.update(new_remotes)
+
+    if len(self.remotes) == response['count']:
+      self.populate_tree()
+      self.set_checks()
 
   def get_obj(self, obj_id):
     if obj_id in self.locals:

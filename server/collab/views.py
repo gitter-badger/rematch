@@ -93,26 +93,45 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
   @decorators.detail_route(url_path="matches")
   def matches(self, request, pk):
     del request
+    del pk
 
     task = self.get_object()
 
     # include local matches (created for specified file_version and are a
     # 'from_instance' match). for those, include the match objects themselves
-    instances = Instance.objects.filter(file_version=task.source_file_version)
-    instances = instances.exclude(from_matches=None)
-    serializer = TaskInstanceSerializer(task.id, instances, many=True)
-    # TODO: this shouldn't be needed here
-    serializer.is_valid()
-    local_instances_data = serializer.data
+    queryset = Instance.objects.filter(file_version=task.source_file_version)
+    queryset = queryset.exclude(from_matches=None)
+
+    # pagination code
+    page = self.paginate_queryset(queryset)
+    if page is not None:
+      serializer = TaskInstanceSerializer(task.id, page, many=True)
+      serializer.is_valid()
+      return self.get_paginated_response(serializer.data)
+    else:
+      serializer = TaskInstanceSerializer(task.id, queryset, many=True)
+      serializer.is_valid()
+      return response.Response(serializer.data)
+
+  @decorators.detail_route(url_path="remotes")
+  def remotes(self, request, pk):
+    del request
+    del pk
+
+    task = self.get_object()
 
     # include remote matches (are a 'to_instance' match), those are referenced
     # by match records of local instances
-    instances = Instance.objects.filter(to_matches__task=task)
-    serializer = SimpleInstanceSerializer(instances, many=True)
-    remote_instances_data = serializer.data
+    queryset = Instance.objects.filter(to_matches__task=task)
 
-    data = {'local': local_instances_data, 'remote': remote_instances_data}
-    return response.Response(data)
+    # pagination code
+    page = self.paginate_queryset(queryset)
+    if page is not None:
+      serializer = SimpleInstanceSerializer(page, many=True)
+      return self.get_paginated_response(serializer.data)
+    else:
+      serializer = SimpleInstanceSerializer(queryset, many=True)
+      return response.Response(serializer.data)
 
 
 class MatchViewSet(viewsets.ReadOnlyModelViewSet):

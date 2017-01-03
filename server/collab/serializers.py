@@ -63,7 +63,8 @@ class SimpleInstanceSerializer(serializers.ModelSerializer):
     model = Instance
     fields = ('id', 'file_version', 'type', 'name', 'offset')
 
-  def get_name(self, instance):
+  @staticmethod
+  def get_name(instance):
     try:
       annotation = Annotation.objects.values_list('data')
       return annotation.get(instance=instance, type='name')[0]

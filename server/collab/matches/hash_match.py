@@ -17,10 +17,6 @@ class HashMatch(match.Match):
     source_values = source.values_list('id', 'instance_id', 'data').iterator()
     for source_id, source_instance_id, source_data in source_values:
       matches = flipped_rest.get(source_data, ())
-      if not matches:
-        continue
 
-      score = 1.0 / len(matches) * 100
       for target_id, target_instance_id in matches:
-        yield (source_id, source_instance_id, target_id, target_instance_id,
-               score)
+        yield (source_instance_id, target_instance_id, 100)

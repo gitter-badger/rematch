@@ -68,11 +68,10 @@ def match(task_id):
 
 def gen_match_objs(task_id, match_type, source_vectors, target_vectors):
   matches = match_type.match(source_vectors, target_vectors)
-  for source, source_instance, target, target_instance, score in matches:
+  for source_instance, target_instance, score in matches:
     if score < 50:
       continue
-    mat = Match(task_id=task_id, from_vector_id=source, to_vector_id=target,
-                from_instance_id=source_instance,
-                to_instance_id=target_instance,
-                score=score, type=match_type.match_type)
+    mat = Match(task_id=task_id, from_instance_id=source_instance,
+                to_instance_id=target_instance, score=score,
+                type=match_type.match_type)
     yield mat

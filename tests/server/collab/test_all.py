@@ -10,12 +10,12 @@ import string
 
 
 @pytest.fixture
-def api_client(db):
+def api_client():
   return test.APIClient()
 
 
 @pytest.fixture
-def admin_api_client(db, admin_user):
+def admin_api_client(admin_user):
   client = test.APIClient()
   client.force_authenticate(user=admin_user)
   return client
@@ -176,3 +176,8 @@ def test_model_creation(api_client, admin_api_client, admin_user, model_name):
   response = api_client.get('/collab/{}/'.format(model_name),
                             HTTP_ACCEPT="application/json")
   assert_eq(response.json(), projects_created)
+
+
+def test_template(admin_client):
+  response = admin_client.get('/accounts/profile/')
+  assert_response(response, status.HTTP_200_OK)

@@ -69,6 +69,8 @@ def handle_update(response):
 
 
 def update_version(url):
+  PACKAGE_PATH = '/idaplugin/'
+
   logger('update').info("New version package url: {}".format(url))
   package_download = urllib2.urlopen(url)
   temp_zip = tempfile.TemporaryFile()
@@ -77,12 +79,12 @@ def update_version(url):
   try:
     temp_zip.write(package_download.read())
     package_zip = zipfile.ZipFile(temp_zip)
-    files = [f for f in package_zip.namelist() if '/idaplugin/' in f]
+    files = [f for f in package_zip.namelist() if PACKAGE_PATH in f]
     package_zip.extractall(temp_dir, files)
 
     for filename in files:
       source = os.path.join(temp_dir, *filename.split('/'))
-      target_file_parts = filename.split('/idaplugin/', 1)[1].split('/')
+      target_file_parts = filename.split(PACKAGE_PATH, 1)[1].split('/')
       target = utils.getPluginBase(*target_file_parts)
       shutil.move(source, target)
   finally:

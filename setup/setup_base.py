@@ -20,9 +20,11 @@ def find_packages_relative(base):
   return [base] + [os.path.join(base, package)
            for package in find_packages(base)]
 
-def build_setup(name, package_name, version_path, package_base, package_data):
+def build_setup(name, package_name, version_path, package_base,
+                package_data={}):
   # generate install_requires based on requirements.txt
-  requirements_path = os.path.join(package_base, "requirements.txt")
+  base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+  requirements_path = os.path.join(base_path, package_base, "requirements.txt")
   if os.path.exists(requirements_path):
     install_requires = get_requirements(requirements_path)
     if not package_base in package_data:
@@ -31,11 +33,14 @@ def build_setup(name, package_name, version_path, package_base, package_data):
   else:
     install_requires = []
 
-  test_requirements_path = os.path.join("tests", name, "requirements.txt")
+  test_requirements_path = os.path.join(base_path, "tests", name,
+                                        "requirements.txt")
   extras_require = {}
   if os.path.exists(test_requirements_path):
     extras_require['test'] = get_requirements(test_requirements_path)
 
+  version_path = os.path.join(base_path, package_base, version_path)
+  readme_path = os.path.join(base_path, "README.md")
   setup(
     name = package_name,
     version = get_version(version_path),
@@ -50,7 +55,7 @@ def build_setup(name, package_name, version_path, package_base, package_data):
     package_data=package_data,
     extras_require=extras_require,
     install_requires=install_requires,
-    long_description=read('README.md'),
+    long_description=read(readme_path),
     classifiers=[
       "Development Status :: 3 - Alpha",
     ],

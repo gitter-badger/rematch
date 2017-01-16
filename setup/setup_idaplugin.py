@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import setup_base
 
 package_data = {'idaplugin/rematch': ['images/*']}

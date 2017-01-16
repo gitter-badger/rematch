@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import setup_base
 
 setup_base.build_setup(name='server',

@@ -21,7 +21,10 @@ def find_packages_relative(base):
            for package in find_packages(base)]
 
 def build_setup(name, package_name, version_path, package_base,
-                package_data={}):
+                package_data=None):
+  if package_data is None:
+    package_data = {}
+
   # generate install_requires based on requirements.txt
   base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
   requirements_path = os.path.join(base_path, package_base, "requirements.txt")

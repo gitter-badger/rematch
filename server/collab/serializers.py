@@ -72,29 +72,6 @@ class SimpleInstanceSerializer(serializers.ModelSerializer):
       return "sub_{:X}".format(instance.offset)
 
 
-class TaskInstanceSerializer(SimpleInstanceSerializer):
-  class NestedMatchSerializer(serializers.ModelSerializer):
-    class Meta:
-      model = Match
-      fields = ('to_instance', 'type', 'score')
-
-  matches = serializers.SerializerMethodField()
-
-  class Meta:
-    model = Instance
-    fields = ('id', 'type', 'offset', 'name', 'matches')
-
-  def __init__(self, task_id, *args, **kwargs):
-    super(TaskInstanceSerializer, self).__init__(*args, **kwargs)
-    self.task_id = task_id
-
-  def get_matches(self, instance):
-    matches = Match.objects.filter(from_instance=instance,
-                                   task_id=self.task_id)
-    serializer = self.NestedMatchSerializer(matches, many=True)
-    return serializer.data
-
-
 class InstanceSerializer(serializers.ModelSerializer):
   owner = serializers.ReadOnlyField(source='owner.username')
   file = serializers.ReadOnlyField(source='file_version.file_id')
@@ -151,5 +128,4 @@ class VectorSerializer(serializers.ModelSerializer):
 class MatchSerializer(serializers.ModelSerializer):
   class Meta:
     model = Match
-    fields = ('from_vector', 'to_vector', 'from_instance', 'to_instance',
-              'task', 'type', 'score')
+    fields = ('from_instance', 'to_instance', 'task', 'type', 'score')

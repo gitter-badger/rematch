@@ -80,8 +80,10 @@ class MatchResultDialog(base.BaseDialog):
     super(MatchResultDialog, self).__init__(*args, **kwargs)
 
     self.task_id = task_id
-    self.locals = {}
-    self.remotes = {}
+    self.locals = None
+    self.remotes = None
+    self.matches = None
+    self.data_recevied_count = None
 
     self.script_code = None
     self.script_compile = None
@@ -162,30 +164,65 @@ class MatchResultDialog(base.BaseDialog):
   def refresh_tree(self):
     self.locals = {}
     self.remotes = {}
+    self.matches = {}
+    self.data_recevied_count = 0
 
-    matches_url = "collab/tasks/{}/matches/".format(self.task_id)
-    network.delayed_query("GET", matches_url, json=True, paginate=True,
-                          params={'limit': 100}, callback=self.handle_matches)
+    locals_url = "collab/tasks/{}/locals/".format(self.task_id)
+    network.delayed_query("GET", locals_url, json=True, paginate=True,
+                          params={'limit': 100}, callback=self.handle_locals)
 
     remotes_url = "collab/tasks/{}/remotes/".format(self.task_id)
     network.delayed_query("GET", remotes_url, json=True, paginate=True,
                           params={'limit': 100}, callback=self.handle_remotes)
 
-  def handle_matches(self, response):
+    matches_url = "collab/tasks/{}/matches/".format(self.task_id)
+    network.delayed_query("GET", matches_url, json=True, paginate=True,
+                          params={'limit': 100}, callback=self.handle_matches)
+
+  def handle_locals(self, response):
     new_locals = {obj['id']: obj for obj in response['results']}
+    subset = set(new_locals) & set(self.locals)
+    if subset:
+        raise Exception("Duplicate local resources: {}".format(subset))
     self.locals.update(new_locals)
 
-    if len(self.locals) == response['count']:
-      self.populate_tree()
-      self.set_checks()
+    self.handle_page(response)
 
   def handle_remotes(self, response):
     new_remotes = {obj['id']: obj for obj in response['results']}
+    subset = set(new_remotes) & set(self.remotes)
+    if subset:
+        raise Exception("Duplicate remotes resources: {}".format(subset))
     self.remotes.update(new_remotes)
 
-    if len(self.remotes) == response['count']:
-      self.populate_tree()
-      self.set_checks()
+    self.handle_page(response)
+
+  def handle_matches(self, response):
+    def rename(o):
+      o['local_id'] = o.pop('from_instance')
+      o['remote_id'] = o.pop('to_instance')
+      return o
+
+    for obj in response['results']:
+      obj = rename(obj)
+      if obj['local_id'] in self.matches:
+        self.matches[obj['local_id']].append(obj)
+      else:
+        self.matches[obj['local_id']] = [obj]
+
+    self.handle_page(response)
+
+  def handle_page(self, response):
+    if 'next' not in response or not response['next']:
+      self.data_recevied_count += 1
+      if self.data_recevied_count >= 3:
+        self.infuse_matches()
+        self.populate_tree()
+        self.set_checks()
+
+  def infuse_matches(self):
+    for local_id, matches in self.matches.items():
+      self.locals[local_id]['matches'] = matches
 
   def get_obj(self, obj_id):
     if obj_id in self.locals:
@@ -339,7 +376,7 @@ class MatchResultDialog(base.BaseDialog):
 
       local_item = self.populate_item(self.tree, local_obj)
       for match_obj in local_obj['matches']:
-        remote_obj = self.remotes[match_obj['to_instance']]
+        remote_obj = self.remotes[match_obj['remote_id']]
 
         context = self.build_context(local_obj, match_obj, remote_obj)
         if self.should_filter(context):

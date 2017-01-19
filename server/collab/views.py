@@ -4,9 +4,9 @@ from collab.models import (Project, File, FileVersion, Task, Instance, Vector,
                            Match)
 from collab.serializers import (ProjectSerializer, FileSerializer,
                                 FileVersionSerializer, TaskSerializer,
-                                TaskEditSerializer, TaskInstanceSerializer,
-                                InstanceVectorSerializer, VectorSerializer,
-                                MatchSerializer, SimpleInstanceSerializer)
+                                TaskEditSerializer, InstanceVectorSerializer,
+                                VectorSerializer, MatchSerializer,
+                                SimpleInstanceSerializer)
 from collab.permissions import IsOwnerOrReadOnly
 from collab import tasks
 
@@ -90,8 +90,8 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
       serializer_class = TaskEditSerializer
     return serializer_class
 
-  @decorators.detail_route(url_path="matches")
-  def matches(self, request, pk):
+  @decorators.detail_route(url_path="locals")
+  def locals(self, request, pk):
     del request
     del pk
 
@@ -99,18 +99,16 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
 
     # include local matches (created for specified file_version and are a
     # 'from_instance' match). for those, include the match objects themselves
-    queryset = Instance.objects.filter(file_version=task.source_file_version)
-    queryset = queryset.exclude(from_matches=None)
+    queryset = Instance.objects.filter(from_matches__task=task).distinct()
+    print(queryset.query)
 
     # pagination code
     page = self.paginate_queryset(queryset)
     if page is not None:
-      serializer = TaskInstanceSerializer(task.id, page, many=True)
-      serializer.is_valid()
+      serializer = SimpleInstanceSerializer(page, many=True)
       return self.get_paginated_response(serializer.data)
     else:
-      serializer = TaskInstanceSerializer(task.id, queryset, many=True)
-      serializer.is_valid()
+      serializer = SimpleInstanceSerializer(queryset, many=True)
       return response.Response(serializer.data)
 
   @decorators.detail_route(url_path="remotes")
@@ -122,7 +120,8 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
 
     # include remote matches (are a 'to_instance' match), those are referenced
     # by match records of local instances
-    queryset = Instance.objects.filter(to_matches__task=task)
+    queryset = Instance.objects.filter(to_matches__task=task).distinct()
+    print(queryset.query)
 
     # pagination code
     page = self.paginate_queryset(queryset)
@@ -131,6 +130,24 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
       return self.get_paginated_response(serializer.data)
     else:
       serializer = SimpleInstanceSerializer(queryset, many=True)
+      return response.Response(serializer.data)
+
+  @decorators.detail_route(url_path="matches")
+  def matches(self, request, pk):
+    del request
+    del pk
+
+    task = self.get_object()
+
+    queryset = Match.objects.filter(task=task)
+
+    # pagination code
+    page = self.paginate_queryset(queryset)
+    if page is not None:
+      serializer = MatchSerializer(page, many=True)
+      return self.get_paginated_response(serializer.data)
+    else:
+      serializer = MatchSerializer(queryset, many=True)
       return response.Response(serializer.data)
 
 

@@ -7,10 +7,11 @@ from .. import network
 
 
 class BaseDialog(QtWidgets.QDialog):
-  def __init__(self, title="", reject_handler=None, submit_handler=None,
-               response_handler=None, exception_handler=None, **kwargs):
+  def __init__(self, title="", modal=True, reject_handler=None,
+               submit_handler=None, response_handler=None,
+               exception_handler=None, **kwargs):
     super(BaseDialog, self).__init__(**kwargs)
-    self.setModal(True)
+    self.setModal(modal)
     self.setWindowTitle(title)
     self.reject_handler = reject_handler
     self.submit_handler = submit_handler

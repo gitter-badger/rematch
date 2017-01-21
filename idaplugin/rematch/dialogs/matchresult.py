@@ -76,7 +76,8 @@ class MatchResultDialog(base.BaseDialog):
   LOCAL_ELEMENT_TOOLTIP = "Local function"
   REMOTE_ELEMENT_TOOLTIP = "Remote function"
 
-  def __init__(self, task_id, *args, **kwargs):
+  def __init__(self, task_id, modal=False, *args, **kwargs):
+    kwargs['modal'] = modal
     super(MatchResultDialog, self).__init__(*args, **kwargs)
 
     self.task_id = task_id

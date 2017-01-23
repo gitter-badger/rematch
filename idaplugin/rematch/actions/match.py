@@ -33,6 +33,12 @@ class MatchAction(base.BoundFileAction):
     self.target_file = None
     self.methods = None
 
+    # results request state
+    self.locals = {}
+    self.remotes = {}
+    self.matches = {}
+    self.data_recevied_count = 0
+
   @staticmethod
   def calc_file_version_hash():
     version_obj = {}
@@ -126,7 +132,10 @@ class MatchAction(base.BoundFileAction):
     self.cancel_upload()
 
   def accept_upload(self):
-    self.cancel_upload()
+    self.timer.stop()
+    self.timer = None
+    self.pbar = None
+
     self.start_task()
 
   def start_task(self):
@@ -197,5 +206,83 @@ class MatchAction(base.BoundFileAction):
     self.timer = None
     self.pbar = None
 
-    self.results = MatchResultDialog(self.task_id)
+    self.start_results()
+
+  def start_results(self):
+    self.pbar = QtWidgets.QProgressDialog()
+    self.pbar.setLabelText("Receiving match results...")
+    self.pbar.setRange(0, 0)
+    self.pbar.setValue(0)
+    self.pbar.canceled.connect(self.cancel_results)
+    self.pbar.rejected.connect(self.reject_results)
+    self.pbar.accepted.connect(self.accept_results)
+    self.pbar.show()
+
+    locals_url = "collab/tasks/{}/locals/".format(self.task_id)
+    network.delayed_query("GET", locals_url, json=True, paginate=True,
+                          params={'limit': 100}, callback=self.handle_locals)
+
+    remotes_url = "collab/tasks/{}/remotes/".format(self.task_id)
+    network.delayed_query("GET", remotes_url, json=True, paginate=True,
+                          params={'limit': 100}, callback=self.handle_remotes)
+
+    matches_url = "collab/tasks/{}/matches/".format(self.task_id)
+    network.delayed_query("GET", matches_url, json=True, paginate=True,
+                          params={'limit': 100}, callback=self.handle_matches)
+
+  def handle_locals(self, response):
+    new_locals = {obj['id']: obj for obj in response['results']}
+    subset = set(new_locals) & set(self.locals)
+    if subset:
+        print("Duplicate local resources: {}".format(subset))
+    self.locals.update(new_locals)
+
+    self.handle_page(response)
+
+  def handle_remotes(self, response):
+    new_remotes = {obj['id']: obj for obj in response['results']}
+    subset = set(new_remotes) & set(self.remotes)
+    if subset:
+        print("Duplicate remotes resources: {}".format(subset))
+    self.remotes.update(new_remotes)
+
+    self.handle_page(response)
+
+  def handle_matches(self, response):
+    def rename(o):
+      o['local_id'] = o.pop('from_instance')
+      o['remote_id'] = o.pop('to_instance')
+      return o
+
+    for obj in response['results']:
+      obj = rename(obj)
+      if obj['local_id'] in self.matches:
+        self.matches[obj['local_id']].append(obj)
+      else:
+        self.matches[obj['local_id']] = [obj]
+
+    self.handle_page(response)
+
+  def handle_page(self, response):
+    if 'previous' not in response or not response['previous']:
+      self.pbar.setMaximum(self.pbar.maximum() + response['count'])
+
+    self.pbar.setValue(max(self.pbar.value(), 0) + len(response['results']))
+    print(self.pbar.maximum(), self.pbar.value())
+
+    if 'next' not in response or not response['next']:
+      self.data_recevied_count += 1
+      if self.data_recevied_count >= 3:
+        self.accept_results()
+
+  def cancel_results(self):
+    self.pbar = None
+    # XXX: todo properly cancel, including stopping paged fetches
+
+  def reject_results(self):
+    self.cancel_results()
+
+  def accept_results(self):
+    self.results = MatchResultDialog(self.task_id, self.locals, self.matches,
+                                     self.remotes)
     self.results.show()

@@ -1,12 +1,12 @@
 from rest_framework import (viewsets, permissions, mixins, decorators, status,
                             response)
 from collab.models import (Project, File, FileVersion, Task, Instance, Vector,
-                           Match)
+                           Match, Annotation)
 from collab.serializers import (ProjectSerializer, FileSerializer,
                                 FileVersionSerializer, TaskSerializer,
                                 TaskEditSerializer, InstanceVectorSerializer,
                                 VectorSerializer, MatchSerializer,
-                                SimpleInstanceSerializer)
+                                SimpleInstanceSerializer, AnnotationSerializer)
 from collab.permissions import IsOwnerOrReadOnly
 from collab import tasks
 
@@ -174,3 +174,9 @@ class VectorViewSet(ViewSetManyAllowedMixin, viewsets.ModelViewSet):
   def perform_create(serializer):
     file_version = serializer.validated_data['instance'].file_version
     serializer.save(file_version=file_version)
+
+
+class AnnotationViewSet(viewsets.ModelViewSet):
+  queryset = Annotation.objects.all()
+  serializer_class = AnnotationSerializer
+  filter_fields = ('instance', 'type', 'data')

@@ -11,6 +11,7 @@ router.register(r'tasks', views.TaskViewSet)
 router.register(r'matches', views.MatchViewSet)
 router.register(r'instances', views.InstanceViewSet)
 router.register(r'vectors', views.VectorViewSet)
+router.register(r'annotations', views.AnnotationViewSet)
 
 urlpatterns = [
   url(r'^', include(router.urls)),

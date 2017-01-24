@@ -82,6 +82,12 @@ class InstanceSerializer(serializers.ModelSerializer):
               'vectors', 'annotations')
 
 
+class AnnotationSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Annotation
+    fields = ('id', 'instance', 'type', 'data')
+
+
 class InstanceVectorSerializer(InstanceSerializer):
   class NestedVectorSerializer(serializers.ModelSerializer):
     class Meta:

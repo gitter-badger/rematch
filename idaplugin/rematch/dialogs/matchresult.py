@@ -135,26 +135,10 @@ class MatchResultDialog(base.BaseDialog):
     self.tree.setSortingEnabled(True)
     self.tree.sortItems(self.MATCH_SCORE_COLUMN, QtCore.Qt.DescendingOrder)
 
-    # text browser (code highlighting & display)
-    self.textBrowser = QtWidgets.QTextBrowser()
-    self.textBrowser.zoomIn(2)
-
-    # splitter for code highlighting and tree
-    self.frame = QtWidgets.QFrame()
-    self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-    self.frame_layout = QtWidgets.QVBoxLayout()
-    self.frame_layout.addWidget(self.tree)
-    self.frame_layout.addWidget(self.search_box)
-    self.frame_layout.addLayout(self.hlayoutButtons)
-    self.frame.setLayout(self.frame_layout)
-
-    self.splitter = QtWidgets.QSplitter()
-    self.splitter.setOrientation(QtCore.Qt.Horizontal)
-    self.splitter.addWidget(self.frame)
-    self.splitter.addWidget(self.textBrowser)
-
-    # main layout
-    self.base_layout.addWidget(self.splitter)
+    # base layout
+    self.base_layout.addWidget(self.tree)
+    self.base_layout.addWidget(self.search_box)
+    self.base_layout.addLayout(self.hlayoutButtons)
 
     # connect events to handle
     self.tree.itemChanged.connect(self.item_changed)
@@ -187,8 +171,7 @@ class MatchResultDialog(base.BaseDialog):
                           callback=self.handle_display_change)
 
   def handle_display_change(self, response):
-    self.textBrowser.setHtml(response)
-    self.textBrowser.reload()
+    # TODO: handle display change
 
   def item_double_clicked(self, item, column):
     del column

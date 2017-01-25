@@ -232,18 +232,12 @@ class MatchAction(base.BoundFileAction):
 
   def handle_locals(self, response):
     new_locals = {obj['id']: obj for obj in response['results']}
-    subset = set(new_locals) & set(self.locals)
-    if subset:
-        print("Duplicate local resources: {}".format(subset))
     self.locals.update(new_locals)
 
     self.handle_page(response)
 
   def handle_remotes(self, response):
     new_remotes = {obj['id']: obj for obj in response['results']}
-    subset = set(new_remotes) & set(self.remotes)
-    if subset:
-        print("Duplicate remotes resources: {}".format(subset))
     self.remotes.update(new_remotes)
 
     self.handle_page(response)
@@ -268,7 +262,6 @@ class MatchAction(base.BoundFileAction):
       self.pbar.setMaximum(self.pbar.maximum() + response['count'])
 
     self.pbar.setValue(max(self.pbar.value(), 0) + len(response['results']))
-    print(self.pbar.maximum(), self.pbar.value())
 
     if 'next' not in response or not response['next']:
       self.data_recevied_count += 1

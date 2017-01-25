@@ -100,7 +100,6 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
     # include local matches (created for specified file_version and are a
     # 'from_instance' match). for those, include the match objects themselves
     queryset = Instance.objects.filter(from_matches__task=task).distinct()
-    print(queryset.query)
 
     # pagination code
     page = self.paginate_queryset(queryset)
@@ -121,7 +120,6 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
     # include remote matches (are a 'to_instance' match), those are referenced
     # by match records of local instances
     queryset = Instance.objects.filter(to_matches__task=task).distinct()
-    print(queryset.query)
 
     # pagination code
     page = self.paginate_queryset(queryset)

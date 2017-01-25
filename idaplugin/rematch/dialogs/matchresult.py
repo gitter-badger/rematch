@@ -1,10 +1,13 @@
 import idaapi
 import idc
 
+import json
+
 from .. idasix import QtGui, QtWidgets, QtCore
 
 from . import base
 from .. import network
+from .. import exceptions
 
 from . import resultscript
 from . import serializedgraph
@@ -92,6 +95,7 @@ class MatchResultDialog(base.BaseDialog):
     self.script_compile = None
     self.script_dialog = None
     self.graph_dialog = serializedgraph.SerializedGraphDialog()
+    self.graph_dialog.Show()
 
     # buttons
     self.btn_set = QtWidgets.QPushButton('&Select best')
@@ -174,7 +178,8 @@ class MatchResultDialog(base.BaseDialog):
     if not len(response) == 1:
       raise exceptions.ServerException()
 
-    self.graph_dialog.Show(response[0]['data'])
+    nodes = json.loads(response[0]['data'])
+    self.graph_dialog.SetNodes(nodes)
 
   def item_double_clicked(self, item, column):
     del column

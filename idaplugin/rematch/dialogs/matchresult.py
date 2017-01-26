@@ -149,7 +149,6 @@ class MatchResultDialog(base.BaseDialog):
     # connect events to handle
     self.tree.itemChanged.connect(self.item_changed)
     self.tree.itemSelectionChanged.connect(self.item_selection_changed)
-    self.tree.itemDoubleClicked.connect(self.item_double_clicked)
 
     self.populate_tree()
     self.set_checks()
@@ -161,35 +160,38 @@ class MatchResultDialog(base.BaseDialog):
       return self.remotes[obj_id]
 
   def item_selection_changed(self):
+    local_item = None
+    remote_item = None
+
     if not self.tree.selectedItems():
       return
 
     item = self.tree.selectedItems()[0]
-    parent = item.parent()
-    if parent is None:
-      return
+    if item.parent() is None:
+      local_item = item
+    else:
+      local_item = item.parent()
+      remote_item = item
 
-    network.delayed_query("GET", "collab/annotations/", json=True,
-                          params={"type": "assembly",
-                                  "instance": item.api_id},
-                          callback=self.handle_display_change)
+    if local_item:
+      idaapi.jumpto(self.get_obj(local_item.api_id)['offset'])
+
+    if remote_item:
+      # TODO: change graph to a "loading..." message
+      network.delayed_query("GET", "collab/annotations/", json=True,
+                            params={"type": "assembly",
+                                    "instance": remote_item.api_id},
+                            callback=self.handle_display_change)
 
   def handle_display_change(self, response):
     if not len(response) == 1:
       raise exceptions.ServerException()
 
     nodes = json.loads(response[0]['data'])
+    # TODO: reopen if closed
     self.graph_dialog.SetNodes(nodes)
 
-  def item_double_clicked(self, item, column):
-    del column
-
-    if item.parent() is None:
-      idaapi.jumpto(self.get_obj(item.api_id)['offset'])
-      item.setExpanded(not item.isExpanded())
-
   def item_changed(self, item, column):
-    # (is checkbox column?)
     if not column == self.CHECKBOX_COLUMN:
       return
 

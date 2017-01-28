@@ -39,6 +39,13 @@ class MatchAction(base.BoundFileAction):
     self.matches = {}
     self.data_recevied_count = 0
 
+    self.delayed_queries = []
+
+  def cancel_delayed(self):
+    for delayed in self.delayed_queries:
+      delayed.cancel()
+    self.delayed_queries = []
+
   @staticmethod
   def calc_file_version_hash():
     version_obj = {}
@@ -64,7 +71,7 @@ class MatchAction(base.BoundFileAction):
     file_version_hash = self.calc_file_version_hash()
     uri = "collab/files/{}/file_version/{}/".format(netnode.bound_file_id,
                                                     file_version_hash)
-    return network.QueryWorker("POST", uri, json=True)
+    return network.delayed_query("POST", uri, json=True)
 
   def response_handler(self, file_version):
     self.file_version_id = file_version['id']
@@ -127,6 +134,7 @@ class MatchAction(base.BoundFileAction):
     self.timer.stop()
     self.timer = None
     self.pbar = None
+    self.cancel_delayed()
 
   def reject_upload(self):
     self.cancel_upload()
@@ -135,6 +143,7 @@ class MatchAction(base.BoundFileAction):
     self.timer.stop()
     self.timer = None
     self.pbar = None
+    self.delayed_queries = []
 
     self.start_task()
 
@@ -197,6 +206,7 @@ class MatchAction(base.BoundFileAction):
     self.timer.stop()
     self.timer = None
     self.pbar = None
+    self.cancel_delayed()
 
   def reject_task(self):
     self.cancel_task()
@@ -205,6 +215,7 @@ class MatchAction(base.BoundFileAction):
     self.timer.stop()
     self.timer = None
     self.pbar = None
+    self.delayed_queries = []
 
     self.start_results()
 
@@ -218,17 +229,22 @@ class MatchAction(base.BoundFileAction):
     self.pbar.accepted.connect(self.accept_results)
     self.pbar.show()
 
+    q = []
     locals_url = "collab/tasks/{}/locals/".format(self.task_id)
-    network.delayed_query("GET", locals_url, json=True, paginate=True,
-                          params={'limit': 100}, callback=self.handle_locals)
+    q.append(network.delayed_query("GET", locals_url, json=True,
+                                   paginate=True, params={'limit': 100},
+                                   callback=self.handle_locals))
 
     remotes_url = "collab/tasks/{}/remotes/".format(self.task_id)
-    network.delayed_query("GET", remotes_url, json=True, paginate=True,
-                          params={'limit': 100}, callback=self.handle_remotes)
+    q.append(network.delayed_query("GET", remotes_url, json=True,
+                                   paginate=True, params={'limit': 100},
+                                   callback=self.handle_remotes))
 
     matches_url = "collab/tasks/{}/matches/".format(self.task_id)
-    network.delayed_query("GET", matches_url, json=True, paginate=True,
-                          params={'limit': 100}, callback=self.handle_matches)
+    q.append(network.delayed_query("GET", matches_url, json=True,
+                                   paginate=True, params={'limit': 100},
+                                   callback=self.handle_matches))
+    self.delayed_queries.extend(q)
 
   def handle_locals(self, response):
     new_locals = {obj['id']: obj for obj in response['results']}
@@ -270,12 +286,13 @@ class MatchAction(base.BoundFileAction):
 
   def cancel_results(self):
     self.pbar = None
-    # XXX: todo properly cancel, including stopping paged fetches
+    self.cancel_delayed()
 
   def reject_results(self):
     self.cancel_results()
 
   def accept_results(self):
+    self.delayed_queries = []
     self.results = MatchResultDialog(self.task_id, self.locals, self.matches,
                                      self.remotes)
     self.results.show()

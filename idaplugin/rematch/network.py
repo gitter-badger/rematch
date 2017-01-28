@@ -36,14 +36,30 @@ class QueryWorker(QtCore.QRunnable):
     self.params = params
     self.json = json
     self.paginate = paginate
+    self.running = True
 
     self.signals = WorkerSignals()
 
+  def start(self, callback=None, exception_callback=None):
+    if callback:
+      self.signals.result_dict.connect(callback)
+      self.signals.result_list.connect(callback)
+      self.signals.result_str.connect(callback)
+    if not exception_callback:
+      exception_callback = default_exception_callback
+    self.signals.result_exception.connect(exception_callback)
+    _threadpool.start(self)
+
+  def cancel(self):
+    self.running = False
+
   def run(self):
     try:
-      while True:
+      while self.running:
         response = query(self.method, self.url, self.server, self.token,
                          self.params, self.json)
+        if not self.running:
+          break
 
         if isinstance(response, dict):
           self.signals.result_dict.emit(response)
@@ -54,11 +70,14 @@ class QueryWorker(QtCore.QRunnable):
 
         # if request is paginated and was successful, automatically request
         # next page if specified. otherwise, break out of the loop
-        if self.paginate and 'next' in response and response['next']:
-          url_obj = urlparse(response['next'])
-          self.params = url_obj.query
-        else:
+        if not self.paginate:
           break
+
+        if 'next' not in response or not response['next']:
+          break
+
+        url_obj = urlparse(response['next'])
+        self.params = url_obj.query
     except Exception as ex:
       self.signals.result_exception.emit(ex)
 
@@ -70,20 +89,14 @@ def default_exception_callback(exception):
 def delayed_query(method, url, server=None, token=None, params=None,
                   json=False, paginate=False, callback=None,
                   exception_callback=None):
-  query_worker = QueryWorker(method, url, server, token, params, json,
-                             paginate)
-  return delayed_worker(query_worker, callback, exception_callback)
+  worker = QueryWorker(method, url, server, token, params, json,
+                       paginate)
+  worker.start(callback, exception_callback)
+  return worker
 
 
 def delayed_worker(query_worker, callback=None, exception_callback=None):
-  if callback:
-    query_worker.signals.result_dict.connect(callback)
-    query_worker.signals.result_list.connect(callback)
-    query_worker.signals.result_str.connect(callback)
-  if not exception_callback:
-    exception_callback = default_exception_callback
-  query_worker.signals.result_exception.connect(exception_callback)
-  _threadpool.start(query_worker)
+  query_worker.start(callback, exception_callback)
 
 
 def query(method, url, server=None, token=None, params=None, json=False):

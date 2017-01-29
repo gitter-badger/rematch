@@ -71,7 +71,7 @@ class MatchAction(base.BoundFileAction):
     file_version_hash = self.calc_file_version_hash()
     uri = "collab/files/{}/file_version/{}/".format(netnode.bound_file_id,
                                                     file_version_hash)
-    return network.delayed_query("POST", uri, json=True)
+    return network.QueryWorker("POST", uri, json=True)
 
   def response_handler(self, file_version):
     self.file_version_id = file_version['id']
@@ -113,9 +113,9 @@ class MatchAction(base.BoundFileAction):
       self.instance_set.append(func.serialize())
 
       if len(self.instance_set) >= 100:
-        network.delayed_query("POST", "collab/instances/",
-                              params=self.instance_set, json=True,
-                              callback=self.progress_advance)
+        q = network.QueryWorker("POST", "collab/instances/",
+                                params=self.instance_set, json=True)
+        q.start(self.progress_advance)
         self.instance_set = []
         self.pbar.setMaximum(self.pbar.maximum() + 1)
       self.progress_advance()
@@ -231,20 +231,22 @@ class MatchAction(base.BoundFileAction):
 
     q = []
     locals_url = "collab/tasks/{}/locals/".format(self.task_id)
-    q.append(network.delayed_query("GET", locals_url, json=True,
-                                   paginate=True, params={'limit': 100},
-                                   callback=self.handle_locals))
+    q = network.QueryWorker("GET", locals_url, json=True, paginate=True,
+                            params={'limit': 100})
+    q.start(self.handle_locals)
+    self.delayed_queries.append(q)
 
     remotes_url = "collab/tasks/{}/remotes/".format(self.task_id)
-    q.append(network.delayed_query("GET", remotes_url, json=True,
-                                   paginate=True, params={'limit': 100},
-                                   callback=self.handle_remotes))
+    q = network.QueryWorker("GET", remotes_url, json=True, paginate=True,
+                            params={'limit': 100})
+    q.start(self.handle_remotes)
+    self.delayed_queries.append(q)
 
     matches_url = "collab/tasks/{}/matches/".format(self.task_id)
-    q.append(network.delayed_query("GET", matches_url, json=True,
-                                   paginate=True, params={'limit': 100},
-                                   callback=self.handle_matches))
-    self.delayed_queries.extend(q)
+    q = network.QueryWorker("GET", matches_url, json=True, paginate=True,
+                            params={'limit': 100})
+    q.start(self.handle_matches)
+    self.delayed_queries.append(q)
 
   def handle_locals(self, response):
     new_locals = {obj['id']: obj for obj in response['results']}

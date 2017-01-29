@@ -37,10 +37,15 @@ class QueryWorker(QtCore.QRunnable):
     self.json = json
     self.paginate = paginate
     self.running = True
+    self.started = False
 
     self.signals = WorkerSignals()
 
   def start(self, callback=None, exception_callback=None):
+    if self.started:
+      raise Exception("query worker already started")
+    self.started = True
+
     if callback:
       self.signals.result_dict.connect(callback)
       self.signals.result_list.connect(callback)
@@ -84,19 +89,6 @@ class QueryWorker(QtCore.QRunnable):
 
 def default_exception_callback(exception):
   raise exception
-
-
-def delayed_query(method, url, server=None, token=None, params=None,
-                  json=False, paginate=False, callback=None,
-                  exception_callback=None):
-  worker = QueryWorker(method, url, server, token, params, json,
-                       paginate)
-  worker.start(callback, exception_callback)
-  return worker
-
-
-def delayed_worker(query_worker, callback=None, exception_callback=None):
-  query_worker.start(callback, exception_callback)
 
 
 def query(method, url, server=None, token=None, params=None, json=False):

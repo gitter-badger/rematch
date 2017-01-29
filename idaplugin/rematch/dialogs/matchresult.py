@@ -178,10 +178,10 @@ class MatchResultDialog(base.BaseDialog):
 
     if remote_item:
       # TODO: change graph to a "loading..." message
-      network.delayed_query("GET", "collab/annotations/", json=True,
-                            params={"type": "assembly",
-                                    "instance": remote_item.api_id},
-                            callback=self.handle_display_change)
+      q = network.QueryWorker("GET", "collab/annotations/", json=True,
+                              params={"type": "assembly",
+                                      "instance": remote_item.api_id})
+      q.start(self.handle_display_change)
 
   def handle_display_change(self, response):
     if not len(response) == 1:

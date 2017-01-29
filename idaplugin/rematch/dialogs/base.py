@@ -62,8 +62,7 @@ class BaseDialog(QtWidgets.QDialog):
       return
 
     # if received a query_worker, execute it and handle response
-    network.delayed_worker(query_worker, self.response_base,
-                           self.exception_base)
+    query_worker.start(self.response_base, self.exception_base)
 
   def reject_base(self):
     if self.reject_handler:

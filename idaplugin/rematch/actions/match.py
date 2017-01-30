@@ -91,8 +91,8 @@ class MatchAction(base.BoundFileAction):
                            "please avoid making any ground-breaking changes.")
     self.pbar.setRange(0, len(self.functions))
     self.pbar.setValue(0)
-    self.pbar.canceled.connect(self.cancel_upload)
-    self.pbar.rejected.connect(self.reject_upload)
+    self.pbar.canceled.connect(self.cancel)
+    self.pbar.rejected.connect(self.reject)
     self.pbar.accepted.connect(self.accept_upload)
 
     self.timer = QtCore.QTimer()
@@ -130,19 +130,20 @@ class MatchAction(base.BoundFileAction):
     if new_value >= self.pbar.maximum():
       self.pbar.accept()
 
-  def cancel_upload(self):
+  def clean_progress(self):
     self.timer.stop()
     self.timer = None
     self.pbar = None
+
+  def cancel(self):
+    self.clean_progress()
     self.cancel_delayed()
 
-  def reject_upload(self):
-    self.cancel_upload()
+  def reject(self):
+    self.cancel()
 
   def accept_upload(self):
-    self.timer.stop()
-    self.timer = None
-    self.pbar = None
+    self.clean_progress()
     self.delayed_queries = []
 
     self.start_task()
@@ -173,8 +174,8 @@ class MatchAction(base.BoundFileAction):
                            "working without any limitations.")
     self.pbar.setRange(0, int(r['progress_max']) if r['progress_max'] else 0)
     self.pbar.setValue(int(r['progress']))
-    self.pbar.canceled.connect(self.cancel_task)
-    self.pbar.rejected.connect(self.reject_task)
+    self.pbar.canceled.connect(self.cancel)
+    self.pbar.rejected.connect(self.reject)
     self.pbar.accepted.connect(self.accept_task)
     self.pbar.show()
 
@@ -202,19 +203,8 @@ class MatchAction(base.BoundFileAction):
       self.cancel_task()
       raise
 
-  def cancel_task(self):
-    self.timer.stop()
-    self.timer = None
-    self.pbar = None
-    self.cancel_delayed()
-
-  def reject_task(self):
-    self.cancel_task()
-
   def accept_task(self):
-    self.timer.stop()
-    self.timer = None
-    self.pbar = None
+    self.clean_progress()
     self.delayed_queries = []
 
     self.start_results()
@@ -224,12 +214,11 @@ class MatchAction(base.BoundFileAction):
     self.pbar.setLabelText("Receiving match results...")
     self.pbar.setRange(0, 0)
     self.pbar.setValue(0)
-    self.pbar.canceled.connect(self.cancel_results)
-    self.pbar.rejected.connect(self.reject_results)
+    self.pbar.canceled.connect(self.cancel)
+    self.pbar.rejected.connect(self.reject)
     self.pbar.accepted.connect(self.accept_results)
     self.pbar.show()
 
-    q = []
     locals_url = "collab/tasks/{}/locals/".format(self.task_id)
     q = network.QueryWorker("GET", locals_url, json=True, paginate=True,
                             params={'limit': 100})
@@ -285,13 +274,6 @@ class MatchAction(base.BoundFileAction):
       self.data_recevied_count += 1
       if self.data_recevied_count >= 3:
         self.accept_results()
-
-  def cancel_results(self):
-    self.pbar = None
-    self.cancel_delayed()
-
-  def reject_results(self):
-    self.cancel_results()
 
   def accept_results(self):
     self.delayed_queries = []

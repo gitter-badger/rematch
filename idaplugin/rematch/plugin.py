@@ -92,7 +92,7 @@ class RematchPlugin(idaapi.plugin_t):
     QtCore.QTimer.singleShot(1000, self.setup)
 
   def run(self, arg=0):
-    logger('main').debug("run with arg: {}".format(arg))
+    logger('main').debug("run with arg: %s", arg)
 
   def term(self):
     if self.timespent_timer:

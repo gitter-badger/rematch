@@ -139,6 +139,7 @@ class UnauthAction(Action):
   """This action is only available when a user is logged off"""
   @staticmethod
   def enabled(ctx):
+    del ctx
     return not bool(user['is_authenticated'])
 
 
@@ -146,6 +147,7 @@ class AuthAction(Action):
   """This action is only available when a user is logged in"""
   @staticmethod
   def enabled(ctx):
+    del ctx
     return bool(user['is_authenticated'])
 
 

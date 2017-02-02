@@ -18,8 +18,6 @@ class MatchAction(base.BoundFileAction):
   def __init__(self, *args, **kwargs):
     super(MatchAction, self).__init__(*args, **kwargs)
     self.functions = None
-    self.pbar = None
-    self.timer = None
     self.results = None
     self.task_id = None
     self.file_version_id = None
@@ -41,10 +39,26 @@ class MatchAction(base.BoundFileAction):
 
     self.delayed_queries = []
 
+    self.pbar = QtWidgets.QProgressDialog()
+    self.pbar.canceled.connect(self.cancel)
+    self.pbar.rejected.connect(self.cancel)
+    self.hide()
+
+    self.timer = QtCore.QTimer()
+
+  def clean(self):
+    self.timer.stop()
+    self.timer.timout.disconnect()
+    self.pbar.accepted.disconnect()
+
   def cancel_delayed(self):
     for delayed in self.delayed_queries:
       delayed.cancel()
     self.delayed_queries = []
+
+  def cancel(self):
+    self.clean()
+    self.cancel_delayed()
 
   @staticmethod
   def calc_file_version_hash():
@@ -86,16 +100,13 @@ class MatchAction(base.BoundFileAction):
   def start_upload(self):
     self.functions = set(idautils.Functions())
 
-    self.pbar = QtWidgets.QProgressDialog()
     self.pbar.setLabelText("Processing IDB... You may continue working,\nbut "
                            "please avoid making any ground-breaking changes.")
     self.pbar.setRange(0, len(self.functions))
     self.pbar.setValue(0)
-    self.pbar.canceled.connect(self.cancel)
-    self.pbar.rejected.connect(self.reject)
     self.pbar.accepted.connect(self.accept_upload)
+    self.pbar.show()
 
-    self.timer = QtCore.QTimer()
     self.timer.timeout.connect(self.perform_upload)
     self.timer.start(0)
 
@@ -104,11 +115,7 @@ class MatchAction(base.BoundFileAction):
   def perform_upload(self):
     try:
       offset = self.functions.pop()
-    except KeyError:
-      self.timer.stop()
-      return
 
-    try:
       func = instances.FunctionInstance(self.file_version_id, offset)
       self.instance_set.append(func.serialize())
 
@@ -120,7 +127,8 @@ class MatchAction(base.BoundFileAction):
         self.pbar.setMaximum(self.pbar.maximum() + 1)
       self.progress_advance()
     except Exception:
-      self.cancel_upload()
+      self.cancel()
+      logger('match_action').exception("perform update failed")
       raise
 
   def progress_advance(self, result=None):
@@ -129,18 +137,6 @@ class MatchAction(base.BoundFileAction):
     self.pbar.setValue(new_value)
     if new_value >= self.pbar.maximum():
       self.pbar.accept()
-
-  def clean_progress(self):
-    self.timer.stop()
-    self.timer = None
-    self.pbar = None
-
-  def cancel(self):
-    self.clean_progress()
-    self.cancel_delayed()
-
-  def reject(self):
-    self.cancel()
 
   def accept_upload(self):
     self.clean_progress()
@@ -169,19 +165,15 @@ class MatchAction(base.BoundFileAction):
     r = network.query("POST", "collab/tasks/", params=params, json=True)
     self.task_id = r['id']
 
-    self.pbar = QtWidgets.QProgressDialog()
     self.pbar.setLabelText("Waiting for remote matching... You may continue "
                            "working without any limitations.")
     self.pbar.setRange(0, int(r['progress_max']) if r['progress_max'] else 0)
     self.pbar.setValue(int(r['progress']))
-    self.pbar.canceled.connect(self.cancel)
-    self.pbar.rejected.connect(self.reject)
     self.pbar.accepted.connect(self.accept_task)
     self.pbar.show()
 
-    self.timer = QtCore.QTimer()
     self.timer.timeout.connect(self.perform_task)
-    self.timer.start(1000)
+    self.timer.start(200)
 
   def perform_task(self):
     try:
@@ -192,7 +184,7 @@ class MatchAction(base.BoundFileAction):
       progress = int(r['progress'])
       status = r['status']
       if status == 'failed':
-        self.pbar.reject()
+        self.pbar.cancel()
       elif progress_max:
         self.pbar.setMaximum(progress_max)
         if progress >= progress_max:
@@ -200,7 +192,8 @@ class MatchAction(base.BoundFileAction):
         else:
           self.pbar.setValue(progress)
     except Exception:
-      self.cancel_task()
+      self.cancel()
+      logger('match_action').exception("perform update failed")
       raise
 
   def accept_task(self):
@@ -210,12 +203,9 @@ class MatchAction(base.BoundFileAction):
     self.start_results()
 
   def start_results(self):
-    self.pbar = QtWidgets.QProgressDialog()
     self.pbar.setLabelText("Receiving match results...")
     self.pbar.setRange(0, 0)
     self.pbar.setValue(0)
-    self.pbar.canceled.connect(self.cancel)
-    self.pbar.rejected.connect(self.reject)
     self.pbar.accepted.connect(self.accept_results)
     self.pbar.show()
 

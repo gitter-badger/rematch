@@ -188,8 +188,8 @@ class MatchResultDialog(base.BaseDialog):
       raise exceptions.ServerException()
 
     nodes = json.loads(response[0]['data'])
-    # TODO: reopen if closed
     self.graph_dialog.SetNodes(nodes)
+    self.graph_dialog.Show()
 
   def item_changed(self, item, column):
     if not column == self.CHECKBOX_COLUMN:

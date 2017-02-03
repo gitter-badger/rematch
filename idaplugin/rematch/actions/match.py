@@ -42,14 +42,20 @@ class MatchAction(base.BoundFileAction):
     self.pbar = QtWidgets.QProgressDialog()
     self.pbar.canceled.connect(self.cancel)
     self.pbar.rejected.connect(self.cancel)
-    self.hide()
+    self.pbar.hide()
 
     self.timer = QtCore.QTimer()
 
   def clean(self):
     self.timer.stop()
-    self.timer.timout.disconnect()
-    self.pbar.accepted.disconnect()
+    try:
+      self.timer.timeout.disconnect()
+    except TypeError:
+      pass
+    try:
+      self.pbar.accepted.disconnect()
+    except TypeError:
+      pass
 
   def cancel_delayed(self):
     for delayed in self.delayed_queries:
@@ -139,7 +145,7 @@ class MatchAction(base.BoundFileAction):
       self.pbar.accept()
 
   def accept_upload(self):
-    self.clean_progress()
+    self.clean()
     self.delayed_queries = []
 
     self.start_task()
@@ -197,7 +203,7 @@ class MatchAction(base.BoundFileAction):
       raise
 
   def accept_task(self):
-    self.clean_progress()
+    self.clean()
     self.delayed_queries = []
 
     self.start_results()
@@ -266,6 +272,7 @@ class MatchAction(base.BoundFileAction):
         self.accept_results()
 
   def accept_results(self):
+    self.clean()
     self.delayed_queries = []
     self.results = MatchResultDialog(self.task_id, self.locals, self.matches,
                                      self.remotes)

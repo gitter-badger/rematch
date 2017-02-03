@@ -31,12 +31,6 @@ class MatchAction(base.BoundFileAction):
     self.target_file = None
     self.methods = None
 
-    # results request state
-    self.locals = {}
-    self.remotes = {}
-    self.matches = {}
-    self.data_recevied_count = 0
-
     self.delayed_queries = []
 
     self.pbar = QtWidgets.QProgressDialog()
@@ -215,6 +209,8 @@ class MatchAction(base.BoundFileAction):
     self.pbar.accepted.connect(self.accept_results)
     self.pbar.show()
 
+    self.results = MatchResultDialog(self.task_id)
+
     locals_url = "collab/tasks/{}/locals/".format(self.task_id)
     q = network.QueryWorker("GET", locals_url, json=True, paginate=True,
                             params={'limit': 100})
@@ -235,13 +231,13 @@ class MatchAction(base.BoundFileAction):
 
   def handle_locals(self, response):
     new_locals = {obj['id']: obj for obj in response['results']}
-    self.locals.update(new_locals)
+    self.results.add_locals(new_locals)
 
     self.handle_page(response)
 
   def handle_remotes(self, response):
     new_remotes = {obj['id']: obj for obj in response['results']}
-    self.remotes.update(new_remotes)
+    self.results.add_remotes(new_remotes)
 
     self.handle_page(response)
 
@@ -251,12 +247,8 @@ class MatchAction(base.BoundFileAction):
       o['remote_id'] = o.pop('to_instance')
       return o
 
-    for obj in response['results']:
-      obj = rename(obj)
-      if obj['local_id'] in self.matches:
-        self.matches[obj['local_id']].append(obj)
-      else:
-        self.matches[obj['local_id']] = [obj]
+    new_matches = map(rename, response['results'])
+    self.results.add_matches(new_matches)
 
     self.handle_page(response)
 
@@ -266,14 +258,8 @@ class MatchAction(base.BoundFileAction):
 
     self.pbar.setValue(max(self.pbar.value(), 0) + len(response['results']))
 
-    if 'next' not in response or not response['next']:
-      self.data_recevied_count += 1
-      if self.data_recevied_count >= 3:
-        self.accept_results()
-
   def accept_results(self):
     self.clean()
     self.delayed_queries = []
-    self.results = MatchResultDialog(self.task_id, self.locals, self.matches,
-                                     self.remotes)
+
     self.results.show()

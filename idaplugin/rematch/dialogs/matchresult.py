@@ -80,22 +80,20 @@ class MatchResultDialog(base.BaseDialog):
   LOCAL_ELEMENT_TOOLTIP = "Local function"
   REMOTE_ELEMENT_TOOLTIP = "Remote function"
 
-  def __init__(self, task_id, local_objs, match_objs, remote_objs, modal=False,
-               *args, **kwargs):
-    kwargs['modal'] = modal
+  def __init__(self, task_id, *args, **kwargs):
+    if 'model' not in kwargs:
+      kwargs['modal'] = False
     super(MatchResultDialog, self).__init__(*args, **kwargs)
 
     self.task_id = task_id
-    self.locals = local_objs
-    self.remotes = remote_objs
-    for local_id, local_matches in match_objs.items():
-      self.locals[local_id]['matches'] = local_matches
+    self.locals = {}
+    self.remotes = {}
+    self.matches = []
 
     self.script_code = None
     self.script_compile = None
     self.script_dialog = None
     self.graph_dialog = serializedgraph.SerializedGraphDialog()
-    self.graph_dialog.Show()
 
     # buttons
     self.btn_set = QtWidgets.QPushButton('&Select best')
@@ -150,8 +148,30 @@ class MatchResultDialog(base.BaseDialog):
     self.tree.itemChanged.connect(self.item_changed)
     self.tree.itemSelectionChanged.connect(self.item_selection_changed)
 
+  def add_locals(self, local_objs):
+    self.locals.update(local_objs)
+
+  def add_remotes(self, remote_objs):
+    self.remotes.update(remote_objs)
+
+  def add_matches(self, match_objs):
+    self.matches.extend(match_objs)
+
+  def finalize_matches(self):
+    for obj in self.matches:
+      local_id = obj['local_id']
+      if 'matches' not in self.locals[local_id]:
+        self.locals[local_id]['matches'] = []
+      self.locals[local_id]['matches'].append(obj)
+
+    self.matches = []
+
+  def show(self, *args, **kwargs):
+    self.finalize_matches()
     self.populate_tree()
     self.set_checks()
+    super(MatchResultDialog, self).show(*args, **kwargs)
+    self.graph_dialog.Show()
 
   def get_obj(self, obj_id):
     if obj_id in self.locals:

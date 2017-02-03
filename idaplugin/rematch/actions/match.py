@@ -113,23 +113,20 @@ class MatchAction(base.BoundFileAction):
     return True
 
   def perform_upload(self):
-    try:
-      offset = self.functions.pop()
+    if not self.functions:
+      return
 
-      func = instances.FunctionInstance(self.file_version_id, offset)
-      self.instance_set.append(func.serialize())
+    offset = self.functions.pop()
+    func = instances.FunctionInstance(self.file_version_id, offset)
+    self.instance_set.append(func.serialize())
 
-      if len(self.instance_set) >= 100:
-        q = network.QueryWorker("POST", "collab/instances/",
-                                params=self.instance_set, json=True)
-        q.start(self.progress_advance)
-        self.instance_set = []
-        self.pbar.setMaximum(self.pbar.maximum() + 1)
-      self.progress_advance()
-    except Exception:
-      self.cancel()
-      logger('match_action').exception("perform update failed")
-      raise
+    if len(self.instance_set) >= 100 or not self.functions:
+      q = network.QueryWorker("POST", "collab/instances/",
+                              params=self.instance_set, json=True)
+      q.start(self.progress_advance)
+      self.instance_set = []
+      self.pbar.setMaximum(self.pbar.maximum() + 1)
+    self.progress_advance()
 
   def progress_advance(self, result=None):
     del result

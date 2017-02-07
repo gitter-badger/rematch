@@ -4,8 +4,8 @@ from collab.models import (Project, File, FileVersion, Task, Instance, Vector,
                            Match)
 from collab.serializers import (ProjectSerializer, FileSerializer,
                                 FileVersionSerializer, TaskSerializer,
-                                TaskEditSerializer, InstanceSerializer,
-                                VectorSerializer, MatchSerializer)
+                                InstanceSerializer, VectorSerializer,
+                                MatchSerializer)
 from collab.permissions import IsOwnerOrReadOnly
 from collab import tasks
 from utils import ViewSetTemplateMixin
@@ -74,9 +74,9 @@ class FileVersionViewSet(viewsets.ModelViewSet):
   filter_fields = ('id', 'file', 'md5hash')
 
 
-class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
-                  mixins.DestroyModelMixin, mixins.ListModelMixin,
-                  viewsets.GenericViewSet, ViewSetTemplateMixin):
+class TaskViewSet(ViewSetTemplateMixin, mixins.CreateModelMixin,
+                  mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
+                  mixins.ListModelMixin, viewsets.GenericViewSet):
   queryset = Task.objects.all()
   serializer_class = TaskSerializer
   permission_classes = (permissions.IsAuthenticatedOrReadOnly,
@@ -86,12 +86,6 @@ class TaskViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
   def perform_create(self, serializer):
     task = serializer.save(owner=self.request.user)
     tasks.match.delay(task_id=task.id)
-
-  def get_serializer_class(self):
-    serializer_class = self.serializer_class
-    if self.request.method in ('PATCH', 'PUT'):
-      serializer_class = TaskEditSerializer
-    return serializer_class
 
 
 class MatchViewSet(viewsets.ReadOnlyModelViewSet):

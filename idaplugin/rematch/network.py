@@ -1,4 +1,4 @@
-from idasix import QtCore
+from .idasix import QtCore
 
 import urllib
 import urllib2

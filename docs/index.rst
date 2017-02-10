@@ -9,12 +9,20 @@ Rematch
 Rematch, a simple binary diffing utility that just works.
 
 .. note::
-  At least, we hope it will be. Rematch is still a work in progress and is not fully functional at the moment.
-  We're currently working on bringing up basic functionality. Check us out again soon, or watch for updates!
+  At least, we hope it will be. Rematch is still a work in progress and is not
+  fully functional at the moment. We're currently working on bringing up basic
+  functionality. Check us out again soon, or watch for updates!
 
-Rematch is intended to be used by reverse engineers for revealing and identifying previously reverse engineered similar functions, and then migrating documentation and annotations to current IDB. Rematch does that by locally collecting and uploading data about functions in your IDB. Rematch uploads information to a web service (which you're supposed to set up as well), that upon request, is able to match your functions against all (or part) of existing database of previously uploaded functions and provide matches.
+Rematch is intended to be used by reverse engineers for revealing and
+identifying previously reverse engineered similar functions, and then
+migrating documentation and annotations to current IDB. Rematch does that by
+locally collecting and uploading data about functions in your IDB. Rematch
+uploads information to a web service (which you're supposed to set up as well),
+that upon request, is able to match your functions against all (or part) of
+existing database of previously uploaded functions and provide matches.
 
-A secondary goal of rematch (which is not currently pursued) is to allow synchronization between multiple reverse engineers working on the same file.
+A secondary goal of rematch (which is not currently pursued) is to allow
+synchronization between multiple reverse engineers working on the same file.
 
 .. toctree::
    :maxdepth: 2
@@ -27,9 +35,13 @@ A secondary goal of rematch (which is not currently pursued) is to allow synchro
 Goal of Rematch
 ---------------
 
-The goal of Rematch is to act as a maintained, extendable, open source tool for advanced assembly function-level binary comparison and matching. Hopefully, this will be a completely open source and free (as in speech) community-driven tool.
+The goal of Rematch is to act as a maintained, extendable, open source tool for
+advanced assembly function-level binary comparison and matching. Hopefully,
+this will be a completely open source and free (as in speech) community-driven
+tool.
 
-We've noticed that although there are more than a handful of existing binary matching tools, there's no one tool that provides all of the following:
+We've noticed that although there are more than a handful of existing binary
+matching tools, there's no one tool that provides all of the following:
 
 1. Open source and community driven.
 2. Supports advanced matching algorithms (ML included ™).

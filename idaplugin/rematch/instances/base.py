@@ -8,6 +8,7 @@ class BaseInstance(object):
     self.vectors = set()
     self.annotations = set()
 
+    self.vectors.add(collectors.NameHashVector)
     self.annotations.add(collectors.NameAnnotation)
 
   def serialize(self):

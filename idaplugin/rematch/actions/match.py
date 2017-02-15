@@ -131,9 +131,10 @@ class MatchAction(base.BoundFileAction):
   def progress_advance(self, result=None):
     del result
     new_value = self.pbar.value() + 1
-    self.pbar.setValue(new_value)
     if new_value >= self.pbar.maximum():
       self.pbar.accept()
+    else:
+      self.pbar.setValue(new_value)
 
   def accept_upload(self):
     self.clean()
@@ -253,7 +254,11 @@ class MatchAction(base.BoundFileAction):
     if 'previous' not in response or not response['previous']:
       self.pbar.setMaximum(self.pbar.maximum() + response['count'])
 
-    self.pbar.setValue(max(self.pbar.value(), 0) + len(response['results']))
+    new_value = max(self.pbar.value(), 0) + len(response['results'])
+    if new_value >= self.pbar.maximum():
+      self.pbar.accept()
+    else:
+      self.pbar.setValue(new_value)
 
   def accept_results(self):
     self.clean()
